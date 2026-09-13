@@ -289,13 +289,36 @@ pytest tests/ -v
 
 ---
 
-## 📸 제출 스크린샷 가이드
+## 📸 미션 검증 스크린샷 (Mission Verification Screenshots)
 
-과제 제출 시 아래 3가지 주요 화면을 캡처하여 첨부합니다:
+`doc/mission.md`에 명시된 필수 및 보너스 요구사항 달성 화면을 `/screens` 폴더에 저장하고 아래에 링크하였습니다.
 
-1. **데이터 요약이 보이는 채팅 화면**:
-   - 상단 KPI 요약 카드(분석 기간, 최신 종가, 최고/최저가, 최근 트렌드)와 함께 사용자의 질문 및 데이터 수치가 반영된 AI 답변이 표시된 화면.
-2. **데이터 관리 화면 (CRUD)**:
-   - "데이터 관리 (CRUD)" 탭에서 일별 주가 목록 테이블, 페이징 바, 새 데이터 추가 모달 동작이 확인되는 화면.
-3. **대화 기록 화면**:
-   - 사이드바의 이전 대화 목록에서 특정 대화를 클릭하여 과거 질의응답 내역이 채팅창에 재표시되는 화면.
+### 1. 데이터 기반 AI 채팅 및 실시간 컨텍스트 주입
+- **요구사항**: 상단 데이터 요약(분석 기간, 최신 종가, 최고/최저가, 최근 트렌드) 반영 + 사용자 질문(자연어)에 대한 구체적 수치 답변 + 대화 세션 자동 누적
+- **파일 링크**: [01_chat_context_injection.jpg](file:///d:/cody/3-2/screens/01_chat_context_injection.jpg)
+
+![01_chat_context_injection](screens/01_chat_context_injection.jpg)
+
+---
+
+### 2. 시계열 데이터 관리 (CRUD 모달 & 테이블)
+- **요구사항**: `(date, value, memo)` 형태의 새 데이터 추가 모달, 실데이터 목록 테이블, 수정/삭제 버튼 동작 검증
+- **파일 링크**: [02_data_crud_management.jpg](file:///d:/cody/3-2/screens/02_data_crud_management.jpg)
+
+![02_data_crud_management](screens/02_data_crud_management.jpg)
+
+---
+
+### 3. 시계열 차트 시각화 & 심층 금융 통계 (보너스 과제 2)
+- **요구사항**: Chart.js 기반 일별 종가 및 20일 이동평균선(SMA 20) 추세선, 20일 변동성(표준편차), 60일 이동평균, 14일 RSI momentum, 누적 수익률, CSV/JSON 내보내기
+- **파일 링크**: [03_chart_and_insights.jpg](file:///d:/cody/3-2/screens/03_chart_and_insights.jpg)
+
+![03_chart_and_insights](screens/03_chart_and_insights.jpg)
+
+---
+
+### 4. Swagger UI 대화형 API 문서화 (/docs)
+- **요구사항**: FastAPI OpenAPI 스펙 기반의 데이터 CRUD 5종, 대화 기록 API 4종, 컨텍스트 주입 챗봇 API 1종 엔드포인트 완비
+- **파일 링크**: [04_swagger_api_docs.jpg](file:///d:/cody/3-2/screens/04_swagger_api_docs.jpg)
+
+![04_swagger_api_docs](screens/04_swagger_api_docs.jpg)
