@@ -3,7 +3,7 @@ import json
 import logging
 import uuid
 from typing import Optional, Dict, Any, List
-from backend.config import OPENAI_API_KEY
+from backend.config import GEMINI_API_KEY
 from backend.services.data_service import DataService
 from backend.services.conversation_service import ConversationService
 from backend.schemas.chat import ChatResponse
@@ -60,13 +60,13 @@ class ChatService:
     def __init__(self, data_service: Optional[DataService] = None, conv_service: Optional[ConversationService] = None):
         self.data_service = data_service or DataService()
         self.conv_service = conv_service or ConversationService()
-        self.openai_client = None
-        if OPENAI_API_KEY and not OPENAI_API_KEY.startswith("sk-placeholder"):
+        self.genai_client = None
+        if GEMINI_API_KEY and not GEMINI_API_KEY.startswith("your-gemini") and not GEMINI_API_KEY.startswith("sk-placeholder"):
             try:
-                from openai import OpenAI
-                self.openai_client = OpenAI(api_key=OPENAI_API_KEY)
+                from google import genai
+                self.genai_client = genai.Client(api_key=GEMINI_API_KEY)
             except Exception as e:
-                logger.warning(f"Could not initialize OpenAI client: {e}")
+                logger.warning(f"Could not initialize Gemini client: {e}")
 
     def _build_system_prompt(self, summary: DataSummaryResponse) -> str:
         metrics = summary.metrics
@@ -94,7 +94,7 @@ class ChatService:
 
     def _generate_mock_reply(self, user_message: str, summary: DataSummaryResponse) -> str:
         """
-        Fallback response generator when OpenAI API Key is absent or during tests.
+        Fallback response generator when Gemini API Key is absent or during tests.
         """
         metrics = summary.metrics
         msg = user_message.lower()
@@ -147,28 +147,40 @@ class ChatService:
         conv = self.conv_service.get_conversation(conv_id)
         history = conv.messages if conv else []
 
-        # 3. Call GPT API (or Mock if no key)
+        # 3. Call Gemini API (or Mock if no client / invalid key)
         reply_text = ""
         system_prompt = self._build_system_prompt(summary)
 
-        if self.openai_client:
+        if self.genai_client:
             try:
-                # Prepare OpenAI messages
-                messages = [{"role": "system", "content": system_prompt}]
-                
-                # Append last 6 messages for context
-                for m in history[-6:]:
-                    messages.append({"role": m.role, "content": m.content})
+                from google.genai import types
 
-                response = self.openai_client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=messages,
+                # Prepare conversation contents for Gemini
+                contents = []
+                for m in history[-6:]:
+                    # Map role: 'user' -> 'user', 'assistant' -> 'model'
+                    role = "model" if m.role == "assistant" else "user"
+                    contents.append(
+                        types.Content(
+                            role=role,
+                            parts=[types.Part.from_text(text=m.content)]
+                        )
+                    )
+
+                config = types.GenerateContentConfig(
+                    system_instruction=system_prompt,
                     temperature=0.7,
-                    max_tokens=800
+                    max_output_tokens=800
                 )
-                reply_text = response.choices[0].message.content or ""
+
+                response = self.genai_client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=contents,
+                    config=config
+                )
+                reply_text = response.text or ""
             except Exception as e:
-                logger.error(f"OpenAI API call failed: {e}. Using fallback mock response.")
+                logger.error(f"Gemini API call failed: {e}. Using fallback mock response.")
                 reply_text = self._generate_mock_reply(message, summary)
         else:
             reply_text = self._generate_mock_reply(message, summary)

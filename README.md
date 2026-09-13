@@ -144,7 +144,7 @@ pip install -r requirements.txt
 프로젝트 루트에 `.env` 파일을 생성하고 필요한 환경 변수를 입력합니다:
 
 ```ini
-OPENAI_API_KEY=your_openai_api_key_here
+GEMINI_API_KEY=your_gemini_api_key_here
 FIREBASE_SERVICE_ACCOUNT_JSON=firebase-credentials.json
 FIREBASE_PROJECT_ID=your-project-id
 ALLOWED_ORIGINS=*
@@ -152,7 +152,7 @@ PORT=8000
 HOST=0.0.0.0
 ```
 
-> **참고:** OpenAI API 키나 Firebase 키가 없더라도 시스템에 내장된 **Mock Fallback 모드**가 작동하여 로컬 개발, 화면 조작, 테스트를 문제없이 수행할 수 있습니다.
+> **참고:** Gemini API 키나 Firebase 키가 없더라도 시스템에 내장된 **Mock Fallback 모드**가 작동하여 로컬 개발, 화면 조작, 테스트를 문제없이 수행할 수 있습니다.
 
 ### 3. 3-1 데이터셋 시딩 (Database Seeding)
 
