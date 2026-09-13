@@ -11,7 +11,7 @@
 | 구분 | 플랫폼 | URL | 상태 |
 | :--- | :--- | :--- | :--- |
 | **웹 프론트엔드** | Vercel | `https://3-2-1-rgx55yfbi-gigantess1.vercel.app/` | Ready |
-| **백엔드 API 서버** | Render | `https://samsung-stock-ai-assistant.onrender.com` (예시) | Ready |
+| **백엔드 API 서버** | Render | `https://samsung-stock-ai-assistant.onrender.com` | Live |
 | **Swagger API 명세서** | Render | `https://samsung-stock-ai-assistant.onrender.com/docs` | Live |
 
 > **⚡ Render 무료 티어 콜드스타트 안내:**

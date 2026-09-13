@@ -18,8 +18,8 @@ const CONFIG = {
       }
       return "http://localhost:8000";
     }
-    // Deployed on Vercel: Render backend URL fallback or reverse-proxy
-    return window.RENDER_BACKEND_URL || window.location.origin;
+    // Deployed on Vercel: Render backend URL default fallback
+    return window.RENDER_BACKEND_URL || "https://samsung-stock-ai-assistant.onrender.com";
   })(),
   DEFAULT_STOCK_NAME: "삼성전자 (005930.KS)"
 };
