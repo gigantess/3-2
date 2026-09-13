@@ -69,14 +69,16 @@ def health_check():
 # Frontend static serving
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 if FRONTEND_DIR.exists():
-    app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
-
     @app.get("/", include_in_schema=False)
     def serve_frontend_root():
         index_file = FRONTEND_DIR / "index.html"
         if index_file.exists():
             return FileResponse(str(index_file))
         return {"message": "삼성전자 주가 분석 AI 비서 API가 실행 중입니다. /docs 에서 API 문서를 확인하세요."}
+
+    app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
+    # Also mount directly at root with html=True so /styles.css, /app.js, /config.js work
+    app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend_root")
 
 if __name__ == "__main__":
     import uvicorn
