@@ -1,0 +1,51 @@
+from typing import Optional, Dict, Any
+from pydantic import BaseModel, Field, field_validator
+import re
+
+class DataItemBase(BaseModel):
+    date: str = Field(..., description="날짜 (YYYY-MM-DD)", examples=["2024-01-02"])
+    value: float = Field(..., description="수치값 (예: 주가, 종가)", examples=[76000.0])
+    memo: Optional[str] = Field("", description="메모 또는 추가 정보", examples=["시가 74,693원, 거래량 1,714만주"])
+
+    @field_validator("date")
+    @classmethod
+    def validate_date_format(cls, v: str) -> str:
+        if not re.match(r"^\d{4}-\d{2}-\d{2}$", v.strip()):
+            raise ValueError("날짜 형식은 YYYY-MM-DD 이어야 합니다.")
+        return v.strip()
+
+class DataItemCreate(DataItemBase):
+    pass
+
+class DataItemUpdate(BaseModel):
+    date: Optional[str] = Field(None, description="날짜 (YYYY-MM-DD)")
+    value: Optional[float] = Field(None, description="수치값")
+    memo: Optional[str] = Field(None, description="메모 또는 추가 정보")
+
+    @field_validator("date")
+    @classmethod
+    def validate_date_format(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            if not re.match(r"^\d{4}-\d{2}-\d{2}$", v.strip()):
+                raise ValueError("날짜 형식은 YYYY-MM-DD 이어야 합니다.")
+            return v.strip()
+        return v
+
+class DataItemResponse(DataItemBase):
+    id: str = Field(..., description="문서 ID")
+    created_at: Optional[str] = Field(None, description="생성 일시")
+    updated_at: Optional[str] = Field(None, description="수정 일시")
+
+class DataMetrics(BaseModel):
+    total: float = Field(..., description="합계")
+    average: float = Field(..., description="평균")
+    max: float = Field(..., description="최고값")
+    min: float = Field(..., description="최저값")
+    latest: Optional[float] = Field(None, description="최신값")
+
+class DataSummaryResponse(BaseModel):
+    period: str = Field(..., description="데이터 기간 (예: 2024-01 ~ 2026-09)")
+    count: int = Field(..., description="총 데이터 개수")
+    metrics: DataMetrics = Field(..., description="주요 수치 지표")
+    trend: str = Field(..., description="추세 분석 결과 (상승/하락/유지)")
+    insights: Optional[str] = Field(None, description="도메인 특화 인사이트 요약")

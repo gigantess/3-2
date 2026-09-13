@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>삼성전자 주가 분석 AI 비서 | 데이터 기반 시계열 AI 어시스턴트</title>
+  <meta name="description" content="3-1 시계열 분석 결과를 기반으로 삼성전자(005930.KS) 일별 주가 데이터를 학습 및 컨텍스트 주입하여 맞춤형 금융 분석 답변을 제공하는 AI 웹 서비스">
+  
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+  
+  <!-- Chart.js CDN for interactive visualization -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- Render Free Tier Cold Start Alert Banner -->
+  <div id="coldStartBanner" class="cold-start-banner hidden">
+    <span>⚡ <strong>Render 서버 안내:</strong> 무료 인스턴스의 첫 요청 슬립(콜드스타트)으로 인해 최초 응답에 30~50초 소요될 수 있습니다. 정상 연결되었습니다!</span>
+    <button id="dismissBannerBtn" aria-label="배너 닫기">&times;</button>
+  </div>
+
+  <div class="app-container">
+    
+    <!-- Sidebar: Conversations & Branding -->
+    <aside class="sidebar" id="appSidebar">
+      <div class="sidebar-header">
+        <div class="brand">
+          <div class="brand-icon">AI</div>
+          <div class="brand-info">
+            <h1>삼성전자 AI 비서</h1>
+            <p>005930.KS Analyst</p>
+          </div>
+        </div>
+      </div>
+
+      <button id="newChatBtn" class="new-chat-btn" type="button">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+        새 대화 시작
+      </button>
+
+      <div class="conversations-section">
+        <div class="section-label">이전 대화 기록</div>
+        <ul id="conversationList" class="conversation-list">
+          <!-- Dynamically populated conversations -->
+        </ul>
+      </div>
+
+      <div class="sidebar-footer">
+        <span id="storageModeLabel">DB: Firestore</span>
+        <button id="themeToggleBtn" class="theme-toggle-btn" aria-label="테마 전환" title="다크/라이트 모드 전환">
+          🌙
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="main-content">
+      
+      <!-- Top Navigation & Tabs -->
+      <header class="top-nav">
+        <nav class="nav-tabs" role="tablist">
+          <button id="tabChat" class="nav-tab active" data-target="viewChat" role="tab" aria-selected="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            AI 분석 채팅
+          </button>
+          <button id="tabChart" class="nav-tab" data-target="viewChart" role="tab" aria-selected="false">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            시계열 차트 & 인사이트
+          </button>
+          <button id="tabData" class="nav-tab" data-target="viewData" role="tab" aria-selected="false">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18"/></svg>
+            데이터 관리 (CRUD)
+          </button>
+        </nav>
+
+        <div class="top-actions">
+          <div class="status-badge" id="apiStatusBadge">
+            <span class="status-dot"></span>
+            <span id="apiStatusText">API 연결됨</span>
+          </div>
+          <a href="/docs" target="_blank" class="btn-secondary" title="Swagger API 명세서 열기">
+            Swagger API Docs ↗
+          </a>
+        </div>
+      </header>
+
+      <!-- KPI Summary Cards Grid (Always Visible Context) -->
+      <section class="summary-bar" id="summaryBar">
+        <div class="kpi-card">
+          <span class="kpi-label">분석 기간</span>
+          <span class="kpi-value" id="kpiPeriod">로딩 중...</span>
+          <span class="kpi-sub" id="kpiCount">총 0개 거래일</span>
+        </div>
+
+        <div class="kpi-card">
+          <span class="kpi-label">최신 종가</span>
+          <span class="kpi-value" id="kpiLatest">-</span>
+          <div id="kpiTrendBadge" class="trend-badge trend-flat">추세 분석 중</div>
+        </div>
+
+        <div class="kpi-card">
+          <span class="kpi-label">전체 평균가</span>
+          <span class="kpi-value" id="kpiAvg">-</span>
+          <span class="kpi-sub">2024~2026 누적 평균</span>
+        </div>
+
+        <div class="kpi-card">
+          <span class="kpi-label">최고가 / 최저가</span>
+          <span class="kpi-value" id="kpiRange">-</span>
+          <span class="kpi-sub" id="kpiMin">최저가 집계 중</span>
+        </div>
+      </section>
+
+      <!-- Multi-View Panels Container -->
+      <div class="views-container">
+        
+        <!-- View 1: AI Chat View -->
+        <div id="viewChat" class="view-panel active">
+          <div class="chat-messages" id="chatMessages">
+            <div class="welcome-box" id="welcomeBox">
+              <div class="welcome-icon">📈</div>
+              <h2>삼성전자 주가 분석 AI 비서에 오신 것을 환영합니다!</h2>
+              <p>
+                3-1 프로젝트에서 분석한 2024~2026년 일별 주가 데이터(656건)가 데이터베이스에 탑재되어 있습니다.<br>
+                실시간 데이터 요약이 시스템 프롬프트에 자동 주입되어 객관적인 수치와 통계 기반 답변을 제공합니다.
+              </p>
+              <div class="prompt-chips">
+                <button class="chip-btn" data-query="삼성전자 최근 20거래일 주가 흐름과 트렌드는 어때?">💡 최근 트렌드 분석</button>
+                <button class="chip-btn" data-query="분석 데이터 중 최고가와 최저가는 각각 얼마였어?">📊 최고가/최저가 조회</button>
+                <button class="chip-btn" data-query="현재까지의 전체 데이터 통계 요약을 정리해줘">📋 전체 데이터 요약</button>
+                <button class="chip-btn" data-query="최근 주가 변동성을 고려했을 때 향후 대응 전략 조언해줘">🎯 투자 대응 전략</button>
+              </div>
+            </div>
+            <!-- Dynamic chat messages go here -->
+          </div>
+
+          <!-- Chat Input Area -->
+          <div class="chat-input-area">
+            <form id="chatForm" class="chat-input-wrap">
+              <textarea 
+                id="chatInput" 
+                class="chat-textarea" 
+                rows="1" 
+                placeholder="삼성전자 주가 데이터에 대해 궁금한 점을 물어보세요... (Enter 전송, Shift+Enter 줄바꿈)"
+                required
+              ></textarea>
+              <button id="sendBtn" class="send-btn" type="submit" aria-label="메시지 전송">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- View 2: Chart & Insights View (Bonus requirement) -->
+        <div id="viewChart" class="view-panel">
+          <div class="chart-view-wrap">
+            <div class="chart-card">
+              <div class="chart-header">
+                <div class="chart-title">
+                  <h3>삼성전자(005930.KS) 일별 종가 및 20일 이동평균선(SMA 20)</h3>
+                  <p>3-1 시계열 통계 알고리즘을 기반으로 산출된 인터랙티브 추세 차트</p>
+                </div>
+                <div class="top-actions">
+                  <button id="exportCsvBtn" class="btn-secondary">📥 CSV 다운로드</button>
+                  <button id="exportJsonBtn" class="btn-secondary">📥 JSON 다운로드</button>
+                </div>
+              </div>
+              <div class="chart-canvas-box">
+                <canvas id="stockChart"></canvas>
+              </div>
+            </div>
+
+            <div class="insight-grid">
+              <div class="insight-card">
+                <h4>📌 3-1 핵심 인사이트 (Fact & Why)</h4>
+                <p id="insightFactWhy">
+                  2024년 1월 7만 원대에서 출발하여 고점 8만 원대 후반에 안착한 뒤, AI 반도체 사이클 및 HBM 공급 모멘텀에 따라 변동성을 확대해 왔습니다.
+                </p>
+              </div>
+              <div class="insight-card">
+                <h4>🎯 전략적 대응 제언 (Action)</h4>
+                <p id="insightAction">
+                  최근 20거래일 이동평균선(SMA 20)을 지지선으로 설정하고, 단기 이격도가 ±5% 이상 벌어질 경우 분할 대응하는 전략이 유효합니다.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- View 3: Data Management CRUD View -->
+        <div id="viewData" class="view-panel">
+          <div class="data-view-wrap">
+            <div class="data-toolbar">
+              <div class="top-actions">
+                <button id="openAddModalBtn" class="btn-primary" type="button">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                  새 데이터 추가
+                </button>
+                <button id="refreshDataBtn" class="btn-secondary" type="button">
+                  🔄 새로고침
+                </button>
+              </div>
+
+              <div class="top-actions">
+                <select id="sortOrderSelect" class="form-control" style="width: 140px;">
+                  <option value="desc">최신 날짜순</option>
+                  <option value="asc">과거 날짜순</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="data-table-card">
+              <div class="table-responsive">
+                <table class="data-table" id="dataTable">
+                  <thead>
+                    <tr>
+                      <th style="width: 130px;">날짜 (date)</th>
+                      <th style="width: 130px;">종가 (value)</th>
+                      <th>메모 및 거래정보 (memo)</th>
+                      <th style="width: 100px; text-align: center;">관리</th>
+                    </tr>
+                  </thead>
+                  <tbody id="dataTableBody">
+                    <!-- Data rows populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+              <div class="pagination-bar">
+                <span id="pageInfo">총 0개 항목 (1 / 1 페이지)</span>
+                <div class="top-actions">
+                  <button id="prevPageBtn" class="btn-secondary" disabled>이전</button>
+                  <button id="nextPageBtn" class="btn-secondary">다음</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Add / Edit Data Modal -->
+  <div class="modal-overlay" id="dataModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modalTitle">새 시계열 데이터 추가</h3>
+        <button id="closeModalBtn" class="modal-close-btn">&times;</button>
+      </div>
+      <form id="dataForm">
+        <input type="hidden" id="editDataId">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="inputDate">거래 날짜 (YYYY-MM-DD) *</label>
+            <input type="date" id="inputDate" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="inputValue">수치 / 종가 (원) *</label>
+            <input type="number" id="inputValue" step="any" class="form-control" placeholder="예: 78500" required>
+          </div>
+          <div class="form-group">
+            <label for="inputMemo">메모 / 특이사항</label>
+            <input type="text" id="inputMemo" class="form-control" placeholder="예: 시가 78,000 | 거래량 1,500만주 | 실적발표 호조">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="cancelModalBtn" class="btn-secondary">취소</button>
+          <button type="submit" class="btn-primary">저장하기</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Scripts -->
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

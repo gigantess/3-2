@@ -1,0 +1,25 @@
+# Environment & Keys
+.env
+firebase-credentials.json
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.pytest_cache/
+
+# Local Mock Database
+.mock_db/
+
+# IDE
+.vscode/
+.idea/
+.gemini/
+.security/
