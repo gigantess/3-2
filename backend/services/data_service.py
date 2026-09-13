@@ -176,3 +176,86 @@ class DataService:
             trend=trend_str,
             insights=insights
         )
+
+    def get_statistics(self) -> Dict[str, Any]:
+        """
+        Calculate extended quantitative financial statistics:
+        - 20-day historical volatility (standard deviation)
+        - 20-day & 60-day Simple Moving Average (SMA)
+        - 14-day Relative Strength Index (RSI 14)
+        - Max & Min record dates & Overall cumulative return
+        """
+        all_items = []
+        for doc in self.collection.stream():
+            d = doc.to_dict()
+            if "date" in d and "value" in d:
+                all_items.append(d)
+
+        if not all_items:
+            return {
+                "period": "데이터 없음",
+                "count": 0,
+                "volatility": 0.0,
+                "sma_20": 0.0,
+                "sma_60": 0.0,
+                "max_price": 0.0,
+                "max_date": "-",
+                "min_price": 0.0,
+                "min_date": "-",
+                "total_return_pct": 0.0,
+                "rsi_14": 50.0
+            }
+
+        all_items.sort(key=lambda x: x["date"])
+        dates = [x["date"] for x in all_items]
+        values = [float(x["value"]) for x in all_items]
+        count = len(values)
+
+        max_val = max(values)
+        min_val = min(values)
+        max_date = dates[values.index(max_val)]
+        min_date = dates[values.index(min_val)]
+
+        # Volatility (20-day standard deviation)
+        w20 = values[-min(20, count):]
+        mean20 = sum(w20) / len(w20)
+        variance = sum((x - mean20) ** 2 for x in w20) / len(w20)
+        volatility = round((variance ** 0.5), 2)
+        sma_20 = round(mean20, 2)
+
+        # 60-day SMA
+        w60 = values[-min(60, count):]
+        sma_60 = round(sum(w60) / len(w60), 2)
+
+        # 14-day RSI
+        rsi_window = min(14, count - 1)
+        if rsi_window > 0:
+            diffs = [values[i] - values[i - 1] for i in range(len(values) - rsi_window, len(values))]
+            gains = [d for d in diffs if d > 0]
+            losses = [-d for d in diffs if d < 0]
+            avg_gain = sum(gains) / rsi_window if gains else 0
+            avg_loss = sum(losses) / rsi_window if losses else 0
+            if avg_loss == 0:
+                rsi_14 = 100.0 if avg_gain > 0 else 50.0
+            else:
+                rs = avg_gain / avg_loss
+                rsi_14 = round(100 - (100 / (1 + rs)), 2)
+        else:
+            rsi_14 = 50.0
+
+        total_return_pct = round(((values[-1] - values[0]) / values[0]) * 100, 2) if values[0] else 0.0
+
+        return {
+            "period": f"{dates[0]} ~ {dates[-1]}",
+            "count": count,
+            "volatility": volatility,
+            "sma_20": sma_20,
+            "sma_60": sma_60,
+            "max_price": round(max_val, 2),
+            "max_date": max_date,
+            "min_price": round(min_val, 2),
+            "min_date": min_date,
+            "total_return_pct": total_return_pct,
+            "rsi_14": rsi_14
+        }
+

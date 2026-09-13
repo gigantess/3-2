@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Any, List, Optional
-from backend.config import FIREBASE_SERVICE_ACCOUNT_JSON, FIREBASE_PROJECT_ID, USE_MOCK_DB, BASE_DIR
+from backend.config import FIREBASE_SERVICE_ACCOUNT_JSON, FIREBASE_PROJECT_ID, USE_MOCK_DB, BASE_DIR, CRED_PATHS
 
 logger = logging.getLogger("backend.database")
 
@@ -125,10 +125,13 @@ def get_db():
 
             if not firebase_admin._apps:
                 cred = None
-                creds_file = BASE_DIR / "firebase-credentials.json"
-                if creds_file.exists():
-                    cred = credentials.Certificate(str(creds_file))
-                elif FIREBASE_SERVICE_ACCOUNT_JSON:
+                for path in CRED_PATHS:
+                    if path.exists():
+                        cred = credentials.Certificate(str(path))
+                        logger.info(f"Loaded Firebase credentials from {path}")
+                        break
+
+                if not cred and FIREBASE_SERVICE_ACCOUNT_JSON:
                     if os.path.exists(FIREBASE_SERVICE_ACCOUNT_JSON):
                         cred = credentials.Certificate(FIREBASE_SERVICE_ACCOUNT_JSON)
                     else:
@@ -140,11 +143,14 @@ def get_db():
                 else:
                     firebase_admin.initialize_app()
 
-            db_client = firestore.client()
-            logger.info("Successfully connected to Google Cloud Firestore!")
+            client = firestore.client()
+            # Probe connection to verify Firestore API is enabled on the project
+            _ = list(client.collection("data").limit(1).stream())
+            db_client = client
+            logger.info("Successfully connected and verified Google Cloud Firestore!")
             return db_client
         except Exception as e:
-            logger.warning(f"Failed to initialize Firestore ({e}). Falling back to In-Memory Mock DB.")
+            logger.warning(f"Firestore connection probe failed ({e}). Falling back to File-Backed Mock DB.")
 
     db_client = MockFirestoreClient()
     return db_client

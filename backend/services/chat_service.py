@@ -41,6 +41,18 @@ TOOLS = [
                 }
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_data_statistics",
+            "description": "삼성전자 주가의 심층 통계(변동성, 20일 이동평균, 60일 이동평균, 14일 RSI, 최고/최저가 및 전체 기간 수익률)를 조회합니다.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        }
     }
 ]
 

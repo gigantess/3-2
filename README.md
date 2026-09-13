@@ -66,10 +66,18 @@
 - 사이드바에 과거 대화 목록 표시 및 클릭 시 이전 대화 메시지 즉시 복원.
 - 불필요한 대화 삭제 기능 제공.
 
-### 5. 인터랙티브 시각화 및 UX 고도화 (보너스 과제)
+### 5. 인터랙티브 시각화 및 UX 고도화 (보너스 과제 2)
 - Chart.js를 이용한 일별 종가 및 20일 이동평균선(SMA 20) 추세 시각화.
+- 심층 통계 API (`GET /api/data/statistics`): 20일 변동성(표준편차), 60일 이동평균, 14일 RSI, 최고/최저가 및 누적 수익률 제공.
+- 데이터 내보내기: CSV 및 JSON 파일 즉시 다운로드 (`/api/data/export`).
 - 다크 모드 / 라이트 모드 원클릭 토글 (localStorage 영구 저장).
 - 빠른 질문을 위한 퀵 프롬프트 칩(Chips).
+
+### 6. AI 도구 호출 (Function Calling) & MCP Server 연동 (보너스 과제 1)
+- **OpenAI Function Calling**: GPT가 상세 데이터나 통계 조회가 필요할 때 `get_data_summary`, `get_data_statistics`, `get_recent_data_items` 도구를 자동 호출.
+- **Model Context Protocol (MCP) Server**: `backend/mcp_server.py`를 통해 외부 AI 에이전트(Claude Desktop 등)에서 표준 JSON-RPC 프로토콜로 삼성전자 주가 데이터를 직접 조회 가능.
+  - 도구 호출 근거: 정밀 수치 분석이나 기간별 통계 계산 시 환각을 방지하고 백엔드의 검증된 알고리즘을 사용하기 위해 내부 API 도구를 호출.
+  - 호출 흐름: `User Query` → `GPT 판단` → `Tool Call Request` → `FastAPI/DataService 실행` → `Tool Output` → `GPT 최종 맞춤형 답변 반환`.
 
 ---
 

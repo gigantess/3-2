@@ -15,6 +15,14 @@ ALLOWED_ORIGINS = [origin.strip() for origin in ALLOWED_ORIGINS_RAW.split(",") i
 PORT = int(os.getenv("PORT", "8000"))
 HOST = os.getenv("HOST", "0.0.0.0")
 
-# Determine whether to use mock DB (if FIREBASE_SERVICE_ACCOUNT_JSON is not provided)
+# Candidate credentials file paths
+CRED_PATHS = [
+    BASE_DIR / ".security" / "firebase-credentials.json",
+    BASE_DIR / "firebase-credentials.json"
+]
+HAS_LOCAL_CREDS = any(p.exists() for p in CRED_PATHS)
+
+# Determine whether to use mock DB (if neither env json nor credentials files are found)
 USE_MOCK_DB_ENV = os.getenv("USE_MOCK_DB", "").lower() in ("true", "1", "yes")
-USE_MOCK_DB = USE_MOCK_DB_ENV or (not FIREBASE_SERVICE_ACCOUNT_JSON and not os.path.exists(BASE_DIR / "firebase-credentials.json"))
+USE_MOCK_DB = USE_MOCK_DB_ENV or (not FIREBASE_SERVICE_ACCOUNT_JSON and not HAS_LOCAL_CREDS)
+

@@ -47,6 +47,15 @@ def get_data_summary():
     """
     return data_service.get_summary()
 
+@router.get("/statistics", summary="심층 통계 지표 조회 (보너스 과제)")
+def get_data_statistics():
+    """
+    보너스 과제 요구사항:
+    변동성(표준편차), 20일 이동평균, 60일 이동평균, RSI, 최고/최저가 및 누적 수익률을 반환합니다.
+    """
+    return data_service.get_statistics()
+
+
 @router.get("/export", summary="데이터 내보내기 (CSV/JSON)")
 def export_data(format: str = Query("csv", pattern="^(csv|json)$", description="내보내기 포맷")):
     """

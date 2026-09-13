@@ -49,3 +49,17 @@ class DataSummaryResponse(BaseModel):
     metrics: DataMetrics = Field(..., description="주요 수치 지표")
     trend: str = Field(..., description="추세 분석 결과 (상승/하락/유지)")
     insights: Optional[str] = Field(None, description="도메인 특화 인사이트 요약")
+
+class DataStatisticsResponse(BaseModel):
+    period: str = Field(..., description="데이터 기간")
+    count: int = Field(..., description="총 데이터 개수")
+    volatility: float = Field(..., description="20일 역사적 변동성(표준편차)")
+    sma_20: float = Field(..., description="20일 단순이동평균")
+    sma_60: float = Field(..., description="60일 단순이동평균")
+    max_price: float = Field(..., description="최고가")
+    max_date: str = Field(..., description="최고가 기록 일자")
+    min_price: float = Field(..., description="최저가")
+    min_date: str = Field(..., description="최저가 기록 일자")
+    total_return_pct: float = Field(..., description="전체 기간 누적 수익률(%)")
+    rsi_14: float = Field(..., description="14일 상대강도지수(RSI)")
+
