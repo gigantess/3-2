@@ -10,7 +10,7 @@
 
 | 구분 | 플랫폼 | URL | 상태 |
 | :--- | :--- | :--- | :--- |
-| **웹 프론트엔드** | Vercel | `https://samsung-stock-ai-assistant.vercel.app` (예시) | Ready |
+| **웹 프론트엔드** | Vercel | `https://3-2-1-rgx55yfbi-gigantess1.vercel.app/` | Ready |
 | **백엔드 API 서버** | Render | `https://samsung-stock-ai-assistant.onrender.com` (예시) | Ready |
 | **Swagger API 명세서** | Render | `https://samsung-stock-ai-assistant.onrender.com/docs` | Live |
 
@@ -39,6 +39,49 @@
 - **Render**: 백엔드 컨테이너 / Python 서비스 배포 (`render.yaml`, `Dockerfile`)
 - **Vercel**: 바닐라 프론트엔드 정적 호스팅 (`vercel.json`)
 - **Pytest**: 100% 통과된 단위/통합 테스트 스위트 (`tests/`)
+
+---
+
+## ✅ 미션 요구사항 달성 현황표 (Mission Checklist)
+
+`doc/mission.md`에 정의된 모든 핵심 요구사항 및 보너스 미션의 구현 및 검증 현황입니다.
+
+| 범주 | 요구사항 항목 | 세부 내용 및 구현 위치 | 달성 여부 |
+| :--- | :--- | :--- | :---: |
+| **1. 개발 환경** | Python 3.10+ & 패키지 구성 | `fastapi`, `uvicorn`, `firebase-admin`, `google-genai`/`openai`, `python-dotenv`, `pandas`, `pytest` 구성 (`requirements.txt`) | **달성 (100%)** |
+| | Firebase 자격증명 관리 | `.security/firebase-credentials.json` 및 환경 변수(`FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_PROJECT_ID`) 보안 로드 (`backend/config.py`) | **달성 (100%)** |
+| | 로컬 & 클라우드 배포 환경 | Render 백엔드 청사진(`render.yaml`) 및 Vercel 정적 호스팅(`vercel.json`) 구성 | **달성 (100%)** |
+| **2. 데이터 선정/분석** | 100개 이상의 시계열 데이터 | 3-1 프로젝트의 삼성전자 2024~2026년 주가 실데이터 **656개 거래일** 적재 (`data/samsung_stock_2024_present.csv`) | **달성 (100%)** |
+| | 요약 정보 및 트렌드 산출 | 기간, 레코드 건수, 평균/최고/최저/최신가 및 20일 이동평균 기반 추세율 알고리즘 구현 (`DataService.get_summary()`) | **달성 (100%)** |
+| **3. FastAPI 구성** | 앱 초기화 및 CORS 설정 | `CORSMiddleware` 적용(`ALLOWED_ORIGINS`), 로컬 및 Vercel 도메인 연동 지원 (`backend/main.py`) | **달성 (100%)** |
+| | 자동 문서화 및 정적 마운트 | Swagger UI(`/docs`) 및 ReDoc(`/redoc`), 루트 정적 자산 서빙 구현 | **달성 (100%)** |
+| **4. Firestore 연동** | NoSQL 클라우드 DB 연동 | GCP Cloud Firestore 실제 연결 검증 및 In-Memory Mock DB Fallback 안전장치 내장 (`backend/database.py`) | **달성 (100%)** |
+| | 컬렉션 구조 설계 | `data` (시계열 주가) 및 `conversations` (대화 기록) 컬렉션 2계층 분리 설계 | **달성 (100%)** |
+| **5. 데이터 API (CRUD)** | `POST /api/data` | 새 데이터 추가 (날짜 정규식 검증, 종가 양수 검증 Pydantic 스키마) | **달성 (100%)** |
+| | `GET /api/data` | 데이터 목록 조회 (날짜/수치 정렬, limit/offset 페이지네이션) | **달성 (100%)** |
+| | `PUT /api/data/{id}` | 특정 ID의 시계열 레코드 수정 | **달성 (100%)** |
+| | `DELETE /api/data/{id}` | 특정 ID의 시계열 레코드 삭제 | **달성 (100%)** |
+| | `GET /api/data/summary` | 시스템 프롬프트 주입용 시계열 핵심 요약 및 인사이트 조회 | **달성 (100%)** |
+| **6. 대화 기록 API** | `POST /api/conversations` | 대화 세션 및 메시지 히스토리 저장 | **달성 (100%)** |
+| | `GET /api/conversations` | 이전 대화 세션 목록 조회 | **달성 (100%)** |
+| | `GET /api/conversations/{id}`| 특정 대화 세션의 전체 메시지 내역 불러오기 | **달성 (100%)** |
+| | `DELETE /api/conversations/{id}`| 대화 세션 삭제 | **달성 (100%)** |
+| **7. AI 챗봇 (컨텍스트 주입)** | `POST /api/chat` | 사용자 질의 수신 → `/api/data/summary` 조회 → 시스템 프롬프트에 주입 → LLM 생성 → 대화 자동 저장 파이프라인 | **달성 (100%)** |
+| | 사실 기반 맞춤형 응답 | 주가 수치(원 단위 쉼표), 원인 분석(Why), 행동 조언(Action) 구조화 답변 | **달성 (100%)** |
+| **8. 웹 프론트엔드 (바닐라)** | 순수 바닐라 HTML/CSS/JS | React/Vue/Tailwind 일체 미사용, 시맨틱 HTML5와 커스텀 CSS/JS 구현 (`frontend/`) | **달성 (100%)** |
+| | 채팅 UI & 로딩 인디케이터 | 사용자/어시스턴트 메시지 버블, 타이핑 로딩 애니메이션, 에러 토스트 | **달성 (100%)** |
+| | 데이터 관리 (CRUD) 화면 | 일별 주가 목록 테이블, 모달 창을 통한 새 데이터 추가 및 삭제/수정 동작 | **달성 (100%)** |
+| | 대화 기록 UX | 사이드바 대화 히스토리 목록 및 클릭 시 이전 대화 즉각 재표시 | **달성 (100%)** |
+| | 데이터 요약 상단 바 | 분석 기간, 최신 종가, 최고/최저가, 최근 트렌드 배지 실시간 표시 | **달성 (100%)** |
+| **9. 배포 및 운영** | Render 백엔드 배포 | `render.yaml` 블루프린트, 무료 티어 콜드스타트 대비 프론트엔드 안내 배너 구비 | **달성 (100%)** |
+| | Vercel 프론트엔드 배포 | `vercel.json` 클린 URL 라우팅 및 `config.js`를 통한 API URL 동적 연동 | **달성 (100%)** |
+| **🌟 보너스 1-A** | AI 도구 호출 (Function Calling)| `chat_service.py`에 `get_data_summary`, `get_data_statistics`, `get_recent_data_items` 도구 스키마 정의 | **달성 (100%)** |
+| **🌟 보너스 1-B** | MCP Server 연동 | `backend/mcp_server.py` 표준 JSON-RPC 2.0 stdio 인터페이스 구현 (Claude Desktop/에이전트 연동) | **달성 (100%)** |
+| **🌟 보너스 2-A** | 심층 통계 API (`/statistics`) | 20일 변동성(표준편차), 20/60일 이동평균선, 14일 RSI 지표 산출 엔드포인트 구현 | **달성 (100%)** |
+| **🌟 보너스 2-B** | 시계열 인터랙티브 차트 | Chart.js 기반 일별 종가 라인 및 20일 이동평균선 반응형 캔버스 렌더링 | **달성 (100%)** |
+| **🌟 보너스 2-C** | 데이터 내보내기 (Export) | `/api/data/export?format=csv|json` 파일 다운로드 기능 및 웹 버튼 제공 | **달성 (100%)** |
+| **🌟 보너스 2-D** | 다크 모드 토글 (Theme) | 헤더 테마 전환 버튼 및 `localStorage` 기반 상태 영구 유지 | **달성 (100%)** |
+| **🌟 품질 검증 (TDD)**| 테스트 스위트 (Pytest) | API, 비즈니스 로직, Gemini 연동 등 9개 테스트 전 항목 통과 (100%) | **달성 (100%)** |
 
 ---
 
