@@ -134,7 +134,15 @@
     stockChartCanvas: document.getElementById('stockChart'),
     
     // Toast
-    toastContainer: document.getElementById('toastContainer')
+    toastContainer: document.getElementById('toastContainer'),
+
+    // Server Settings Modal
+    serverSettingsModal: document.getElementById('serverSettingsModal'),
+    serverSettingsForm: document.getElementById('serverSettingsForm'),
+    inputApiBaseUrl: document.getElementById('inputApiBaseUrl'),
+    closeSettingsModalBtn: document.getElementById('closeSettingsModalBtn'),
+    resetLocalUrlBtn: document.getElementById('resetLocalUrlBtn'),
+    bannerConfigBtn: document.getElementById('bannerConfigBtn')
   };
 
   // =========================================================
@@ -805,6 +813,56 @@
   elements.dismissBannerBtn.addEventListener('click', () => {
     elements.coldStartBanner.classList.add('hidden');
   });
+
+  // Server Settings Modal Trigger & Form
+  function openServerSettings() {
+    if (elements.serverSettingsModal) {
+      elements.inputApiBaseUrl.value = localStorage.getItem('API_BASE_URL') || CONFIG.API_BASE_URL || '';
+      elements.serverSettingsModal.classList.add('active');
+    }
+  }
+
+  function closeServerSettings() {
+    if (elements.serverSettingsModal) {
+      elements.serverSettingsModal.classList.remove('active');
+    }
+  }
+
+  if (elements.bannerConfigBtn) {
+    elements.bannerConfigBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openServerSettings();
+    });
+  }
+
+  if (elements.apiStatusBadge) {
+    elements.apiStatusBadge.style.cursor = 'pointer';
+    elements.apiStatusBadge.title = '클릭하여 백엔드 API 서버 주소 변경';
+    elements.apiStatusBadge.addEventListener('click', openServerSettings);
+  }
+
+  if (elements.closeSettingsModalBtn) {
+    elements.closeSettingsModalBtn.addEventListener('click', closeServerSettings);
+  }
+
+  if (elements.resetLocalUrlBtn) {
+    elements.resetLocalUrlBtn.addEventListener('click', () => {
+      localStorage.removeItem('API_BASE_URL');
+      showToast('로컬 개발 주소(http://localhost:8000)로 초기화되었습니다. 새로고침합니다.', 'info');
+      setTimeout(() => location.reload(), 800);
+    });
+  }
+
+  if (elements.serverSettingsForm) {
+    elements.serverSettingsForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      let url = elements.inputApiBaseUrl.value.trim();
+      if (url.endsWith('/')) url = url.slice(0, -1);
+      localStorage.setItem('API_BASE_URL', url);
+      showToast('백엔드 API 주소가 저장되었습니다. 연결을 시도합니다...', 'success');
+      setTimeout(() => location.reload(), 600);
+    });
+  }
 
   // Start app on DOMContentLoaded
   if (document.readyState === 'loading') {

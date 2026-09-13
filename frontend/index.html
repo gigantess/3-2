@@ -14,9 +14,9 @@
 </head>
 <body>
 
-  <!-- Render Free Tier Cold Start Alert Banner -->
+  <!-- Render Free Tier Cold Start & API Config Banner -->
   <div id="coldStartBanner" class="cold-start-banner hidden">
-    <span>⚡ <strong>Render 서버 안내:</strong> 무료 인스턴스의 첫 요청 슬립(콜드스타트)으로 인해 최초 응답에 30~50초 소요될 수 있습니다. 정상 연결되었습니다!</span>
+    <span>⚡ <strong>API 서버 연결 안내:</strong> Render 무료 인스턴스 기동(약 30~50초) 중이거나 백엔드 주소 연결이 필요합니다. <button id="bannerConfigBtn" style="text-decoration:underline;background:none;border:none;color:#93c5fd;cursor:pointer;font-weight:600;">[백엔드 API 주소 설정]</button></span>
     <button id="dismissBannerBtn" aria-label="배너 닫기">&times;</button>
   </div>
 
@@ -267,6 +267,34 @@
         <div class="modal-footer">
           <button type="button" id="cancelModalBtn" class="btn-secondary">취소</button>
           <button type="submit" class="btn-primary">저장하기</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Server Connection Settings Modal -->
+  <div class="modal-overlay" id="serverSettingsModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>백엔드 API 서버 연결 설정</h3>
+        <button id="closeSettingsModalBtn" class="modal-close-btn">&times;</button>
+      </div>
+      <form id="serverSettingsForm">
+        <div class="modal-body">
+          <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 16px;">
+            Vercel 정적 프론트엔드가 데이터를 가져올 <strong>Render(FastAPI) 백엔드 주소</strong>를 설정합니다.
+          </p>
+          <div class="form-group">
+            <label for="inputApiBaseUrl">백엔드 API 서버 URL *</label>
+            <input type="url" id="inputApiBaseUrl" class="form-control" placeholder="https://your-app.onrender.com" required>
+            <small style="color: var(--text-muted); font-size: 0.8rem; margin-top: 4px; display: block;">
+              예: https://samsung-stock-ai-assistant.onrender.com
+            </small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="resetLocalUrlBtn" class="btn-secondary">로컬(localhost:8000)로 초기화</button>
+          <button type="submit" class="btn-primary">저장 및 연결</button>
         </div>
       </form>
     </div>
