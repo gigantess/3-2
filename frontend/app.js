@@ -84,6 +84,7 @@
     // Status
     apiStatusBadge: document.getElementById('apiStatusBadge'),
     apiStatusText: document.getElementById('apiStatusText'),
+    swaggerDocsLink: document.getElementById('swaggerDocsLink'),
     storageModeLabel: document.getElementById('storageModeLabel'),
     
     // KPI summary
@@ -779,6 +780,9 @@
     initTheme();
 
     // Check health
+    if (elements.swaggerDocsLink) {
+      elements.swaggerDocsLink.href = `${CONFIG.API_BASE_URL}/docs`;
+    }
     try {
       const health = await API.get('/health');
       elements.apiStatusBadge.style.display = 'flex';
