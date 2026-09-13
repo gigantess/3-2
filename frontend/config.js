@@ -3,9 +3,12 @@
  * Automatically switches between local dev backend and deployed Render backend.
  */
 const CONFIG = {
-  // If window.API_BASE_URL is set, use it; otherwise auto-detect
+  // If window.API_BASE_URL is set, use it; otherwise check localStorage or auto-detect
   API_BASE_URL: (function() {
     if (window.API_BASE_URL) return window.API_BASE_URL;
+    const stored = localStorage.getItem("API_BASE_URL");
+    if (stored) return stored;
+
     const hostname = window.location.hostname;
     // When running locally
     if (hostname === "localhost" || hostname === "127.0.0.1") {
@@ -15,8 +18,8 @@ const CONFIG = {
       }
       return "http://localhost:8000";
     }
-    // Deployed environment: fallback or relative if reverse-proxied
-    return window.location.origin;
+    // Deployed on Vercel: Render backend URL fallback or reverse-proxy
+    return window.RENDER_BACKEND_URL || window.location.origin;
   })(),
   DEFAULT_STOCK_NAME: "삼성전자 (005930.KS)"
 };
