@@ -30,14 +30,14 @@ class SamsungStockDiscordBot(discord.Client):
         self.data_service = DataService()
 
     async def on_ready(self):
-        logger.info(f"✅ [Discord Bot] Logged in as {self.user} (ID: {self.user.id})")
-        print(f"✅ [Discord Bot] 양방향 AI 비서 봇 가동 완료: {self.user} (ID: {self.user.id})")
-        # Set Discord presence activity
+        logger.info(f"[Discord Bot] Logged in as {self.user} (ID: {self.user.id})")
+        print(f"[Discord Bot] 양방향 AI 비서 봇 연결 완료: {self.user} (상태: 온라인)")
+        print(f"[Discord Bot] -> 대화 방법: '!질문 내용' 또는 '@{self.user.name} 내용' 또는 '삼성전자 주가 어때?'")
         try:
             await self.change_presence(
                 activity=discord.Activity(
                     type=discord.ActivityType.watching,
-                    name="삼성전자(005930.KS) 주가 | !질문 or 멘션"
+                    name="삼성전자 주가 | !질문 or 멘션"
                 )
             )
         except Exception as e:
@@ -52,14 +52,14 @@ class SamsungStockDiscordBot(discord.Client):
         is_mentioned = self.user in message.mentions
         is_dm = isinstance(message.channel, discord.DMChannel)
 
-        # Check commands
-        is_briefing_cmd = content.startswith("!브리핑") or content.startswith("/브리핑")
+        print(f"[Discord Bot 수신] 작성자: {message.author} | 내용: '{content}' | 멘션여부: {is_mentioned}")
+
+        # Check commands (flexible triggers)
+        is_briefing_cmd = any(content.startswith(x) for x in ["!브리핑", "/브리핑", "브리핑", "!요약", "요약"])
         is_chat_cmd = (
             is_mentioned or is_dm or
-            content.startswith("!질문") or
-            content.startswith("!삼성") or
-            content.startswith("!주가") or
-            content.startswith("!ask")
+            any(content.startswith(x) for x in ["!질문", "!삼성", "!주가", "!ask", "!chat", "!", "?"]) or
+            any(k in content for k in ["삼성", "주가", "종가", "이평선", "매수", "매도", "전망", "목표가", "분석", "안녕"])
         )
 
         if not (is_briefing_cmd or is_chat_cmd):
@@ -204,6 +204,7 @@ class SamsungStockDiscordBot(discord.Client):
                 )
 
                 await message.reply(embed=embed)
+                print(f"[Discord Bot 회신 완료] {message.author}에게 AI 답변 임베드 카드 발송 성공")
         except Exception as e:
             logger.error(f"Error handling chat in Discord bot: {e}")
             await message.reply(f"⚠️ AI 답변 생성 중 오류가 발생했습니다: {e}")
