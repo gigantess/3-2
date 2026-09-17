@@ -101,9 +101,14 @@ class ChatService:
 
 [답변 가이드라인]
 1. 반드시 위 요약 데이터를 기반으로 구체적인 수치(원 단위 쉼표 표기)를 들어 설명하세요.
-2. 사실(Fact) - 원인 분석(Why) - 전략적 조언(Action) 관점으로 구조화하여 답변하세요.
-3. 사용자가 데이터 외적인 질문을 하더라도 삼성전자 주가 트렌드와 연계하여 답변을 유도하세요.
-4. 존댓말과 정중한 어조를 유지하세요.
+2. 사실(Fact) - 원인 분석(Why) - 전략적 조언(Action) 관점으로 명확하고 전문성 있게 구조화하여 답변하세요.
+3. 사용자가 "내일 주가가 오를까?", "언제쯤 오를까?", "지금 사도 될까?"와 같은 미래 방향성이나 매매 타이밍을 물어볼 경우:
+   - 기계적으로 "보합/횡보입니다"라는 단순 데이터 나열 답변을 절대 반복하지 마세요!
+   - [Fact]: 현재 최신 종가({metrics.latest:,.0f}원)와 20일 이동평균선 대비 현재 위치(이격도), 14일 RSI 및 최근 추세를 정확한 수치로 제시하세요.
+   - [Why]: 주가 상승/하락의 결정적 열쇠가 되는 3대 핵심 변수(외국인/기관 수급 전환, 미국 필라델피아 반도체/엔비디아 지수 흐름, 환율 영향)를 분석하세요.
+   - [Action]: 단기(내일~수일) 지지선/저항선 가격대와 중장기 투자자를 위한 구체적인 분할 매수/손절 대응 전략을 명확하게 제시하세요.
+4. 사용자가 데이터 외적인 질문을 하더라도 삼성전자 주가 트렌드와 연계하여 답변을 유도하세요.
+5. 신뢰감 있고 정중한 금융 전문가 어조를 유지하세요.
 """
 
     def _build_system_prompt(self, summary: DataSummaryResponse) -> str:
@@ -116,7 +121,20 @@ class ChatService:
         metrics = summary.metrics
         msg = user_message.lower()
 
-        if "최고" in msg or "고점" in msg:
+        if any(k in msg for k in ["오를까", "상승", "내릴까", "하락", "내일", "사도", "매수", "전망"]):
+            return (
+                f"💡 **삼성전자(005930.KS) 단기 및 중기 주가 전망 분석**\n\n"
+                f"**[Fact (현재 위치)]**\n"
+                f"• 현재 최신 종가는 **{metrics.latest:,.0f}원**이며, 최근 20일 이동평균선 대비 **{summary.trend}** 국면에 위치해 있습니다. "
+                f"기간 내 최저가는 {metrics.min:,.0f}원, 최고가는 {metrics.max:,.0f}원입니다.\n\n"
+                f"**[Why (주가 등락의 핵심 변수)]**\n"
+                f"1. **글로벌 기술주 동향**: 오늘 밤 미국 필라델피아 반도체 지수 및 주요 AI 반도체 종목의 반등 여부가 내일 시초가에 직접적인 영향을 미칩니다.\n"
+                f"2. **외국인/기관 수급**: 최근 매도세가 진정되고 외국인의 순매수 전환이 확인되어야 본격적인 기술적 반등 추세가 형성될 수 있습니다.\n\n"
+                f"**[Action (투자 대응 전략)]**\n"
+                f"• **단기 관점**: 내일 섣부른 추격 매수보다는 장 초반 수급과 20일 이동평균선 지지 여부를 확인한 후 보수적으로 접근을 권장합니다.\n"
+                f"• **중장기 관점**: 역사적 밸류에이션 하단 부근이므로, 단기 등락에 일희일비하기보다는 음봉(조정일) 분할 매수 전략이 유효합니다."
+            )
+        elif "최고" in msg or "고점" in msg:
             return (
                 f"삼성전자 분석 데이터 기준 최고가는 **{metrics.max:,.0f}원**입니다. "
                 f"전체 기간({summary.period}) 동안의 평균가({metrics.average:,.0f}원) 대비 높은 수준을 기록했던 핵심 저항선입니다."
@@ -164,7 +182,7 @@ class ChatService:
         conv = self.conv_service.get_conversation(conv_id)
         history = conv.messages if conv else []
 
-        # 3. Call Gemini API (or Mock if no client / invalid key)
+        # 3. Call Gemini API (with candidate model resolution)
         reply_text = ""
         system_prompt = self._build_system_prompt(summary)
 
@@ -175,7 +193,6 @@ class ChatService:
                 # Prepare conversation contents for Gemini
                 contents = []
                 for m in history[-6:]:
-                    # Map role: 'user' -> 'user', 'assistant' -> 'model'
                     role = "model" if m.role == "assistant" else "user"
                     contents.append(
                         types.Content(
@@ -190,12 +207,23 @@ class ChatService:
                     max_output_tokens=800
                 )
 
-                response = self.genai_client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=contents,
-                    config=config
-                )
-                reply_text = response.text or ""
+                # Try modern models in priority order
+                models_to_try = ["gemini-3.6-flash", "gemini-flash-latest", "gemini-3.5-flash", "gemini-2.5-flash"]
+                for model_name in models_to_try:
+                    try:
+                        response = self.genai_client.models.generate_content(
+                            model=model_name,
+                            contents=contents,
+                            config=config
+                        )
+                        reply_text = response.text or ""
+                        if reply_text:
+                            break
+                    except Exception as model_err:
+                        logger.warning(f"Model {model_name} failed: {model_err}. Trying next candidate...")
+
+                if not reply_text:
+                    reply_text = self._generate_mock_reply(message, summary)
             except Exception as e:
                 logger.error(f"Gemini API call failed: {e}. Using fallback mock response.")
                 reply_text = self._generate_mock_reply(message, summary)
