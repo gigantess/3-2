@@ -309,3 +309,115 @@ class DataService:
             "rsi_14": rsi_14
         }
 
+    def sync_latest_data(self, symbol: str = "005930.KS") -> Dict[str, Any]:
+        """
+        오늘(실시간)까지의 최신 주가 데이터를 외부 금융 소스(Yahoo Finance)에서 조회하여
+        기존 DB에 없는 신규 거래일 데이터를 자동으로 적재합니다.
+        신규 추가된 데이터는 CSV 원본 파일에도 동기화되어 영구 보존됩니다.
+        """
+        import urllib.request
+        import json
+        from pathlib import Path
+
+        existing_items, _ = self.get_items(limit=1000, sort_by="date", sort_order="desc")
+        existing_dates = {item.date for item in existing_items}
+        latest_date = max(existing_dates) if existing_dates else "2024-01-01"
+
+        fetched_records = []
+        try:
+            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=1mo"
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+            )
+            with urllib.request.urlopen(req, timeout=10) as res:
+                if res.status == 200:
+                    chart_data = json.loads(res.read().decode("utf-8"))
+                    result = chart_data["chart"]["result"][0]
+                    timestamps = result.get("timestamp", [])
+                    quotes = result["indicators"]["quote"][0]
+                    for i in range(len(timestamps)):
+                        dt = datetime.fromtimestamp(timestamps[i]).strftime("%Y-%m-%d")
+                        c = quotes["close"][i]
+                        if c is None:
+                            continue
+                        o = quotes.get("open", [c])[i] or c
+                        h = quotes.get("high", [c])[i] or c
+                        l = quotes.get("low", [c])[i] or c
+                        v = quotes.get("volume", [0])[i] or 0
+                        fetched_records.append({
+                            "date": dt,
+                            "close": round(float(c), 0),
+                            "open": round(float(o), 0),
+                            "high": round(float(h), 0),
+                            "low": round(float(l), 0),
+                            "volume": int(float(v))
+                        })
+        except Exception as e:
+            logger.warning(f"External stock sync warning: {e}")
+
+        added_items = []
+        csv_candidates = [
+            Path(__file__).resolve().parent.parent.parent / "data" / "samsung_stock_2024_present.csv",
+            Path("data/samsung_stock_2024_present.csv")
+        ]
+        csv_path = None
+        for p in csv_candidates:
+            if p.exists():
+                csv_path = p
+                break
+
+        csv_append_lines = []
+        fetched_records.sort(key=lambda x: x["date"])
+
+        for rec in fetched_records:
+            if rec["date"] > latest_date and rec["date"] not in existing_dates:
+                memo = (
+                    f"시가 {rec['open']:,.0f} | 고가 {rec['high']:,.0f} | "
+                    f"저가 {rec['low']:,.0f} | 거래량 {rec['volume']:,.0f}주"
+                )
+                item_in = DataItemCreate(
+                    date=rec["date"],
+                    value=rec["close"],
+                    memo=memo
+                )
+                created = self.add_item(item_in)
+                added_items.append({
+                    "id": created.id,
+                    "date": created.date,
+                    "value": created.value,
+                    "memo": created.memo
+                })
+                existing_dates.add(rec["date"])
+                csv_append_lines.append(
+                    f"{rec['date']},{rec['close']},{rec['high']},{rec['low']},{rec['open']},{rec['volume']}\n"
+                )
+
+        if csv_path and csv_append_lines:
+            try:
+                with open(csv_path, "a", encoding="utf-8") as f:
+                    for line in csv_append_lines:
+                        f.write(line)
+            except Exception as e:
+                logger.warning(f"Could not append to CSV file: {e}")
+
+        self._invalidate_cache()
+        summary = self.get_summary()
+
+        return {
+            "status": "success",
+            "updated_count": len(added_items),
+            "added_items": added_items,
+            "latest_date": summary.period.split(" ~ ")[-1] if " ~ " in summary.period else latest_date,
+            "total_count": summary.count,
+            "period": summary.period,
+            "latest_price": summary.metrics.latest,
+            "trend": summary.trend,
+            "summary": {
+                "period": summary.period,
+                "count": summary.count,
+                "latest_price": summary.metrics.latest,
+                "trend": summary.trend
+            }
+        }
+

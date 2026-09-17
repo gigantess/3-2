@@ -42,9 +42,9 @@ def test_summary_caching_and_invalidation():
     s2 = ds.get_summary()
     assert s1.metrics.latest == s2.metrics.latest
 
-    # Mutate data by adding a new item
+    # Mutate data by adding a new item with a future date
     from backend.schemas.data import DataItemCreate
-    new_doc = ds.add_item(DataItemCreate(date="2026-09-15", value=99999.0, memo="캐시 무효화 테스트용"))
+    new_doc = ds.add_item(DataItemCreate(date="2099-12-31", value=99999.0, memo="캐시 무효화 테스트용"))
 
     # Summary should be refreshed and cache invalidated
     s3 = ds.get_summary()

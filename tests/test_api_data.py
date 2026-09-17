@@ -85,3 +85,12 @@ def test_data_validation_error():
     }
     res = client.post("/api/data", json=bad_item)
     assert res.status_code == 422
+
+def test_data_sync_endpoint():
+    res = client.post("/api/data/sync")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "success"
+    assert "updated_count" in data
+    assert "latest_date" in data
+    assert "summary" in data

@@ -94,6 +94,17 @@ def export_data(format: str = Query("csv", pattern="^(csv|json)$", description="
             headers={"Content-Disposition": 'attachment; filename="samsung_stock_data.csv"'}
         )
 
+@router.post("/sync", summary="오늘까지의 최신 주가 데이터 동기화")
+def sync_latest_data():
+    """
+    외부 금융 소스(Yahoo Finance)에서 오늘까지의 최신 주가 데이터를 가져와
+    DB에 없는 신규 거래일 데이터를 자동으로 저장하고 요약/통계를 갱신합니다.
+    """
+    try:
+        return data_service.sync_latest_data()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"최신 데이터 동기화 실패: {str(e)}")
+
 @router.get("/{id}", response_model=DataItemResponse, summary="특정 데이터 단건 조회")
 def get_data_item(id: str):
     item = data_service.get_item(id)

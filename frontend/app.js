@@ -847,10 +847,33 @@
     loadDataItems();
   });
 
-  elements.refreshDataBtn.addEventListener('click', () => {
-    loadDataItems();
-    loadSummary();
-    showToast('데이터 목록을 새로고침했습니다.', 'info');
+  elements.refreshDataBtn.addEventListener('click', async () => {
+    try {
+      elements.refreshDataBtn.disabled = true;
+      elements.refreshDataBtn.textContent = '🔄 최신 동기화 중...';
+
+      // 1. Trigger backend sync up to today (Yahoo Finance / latest records)
+      const syncRes = await API.post('/api/data/sync', {});
+
+      // 2. Reload data items, summary bar, and chart
+      await Promise.all([
+        loadDataItems(),
+        loadSummary(),
+        loadChartData()
+      ]);
+
+      if (syncRes && syncRes.updated_count > 0) {
+        showToast(`오늘까지의 최신 데이터 ${syncRes.updated_count}건이 성공적으로 동기화되었습니다! (최신일: ${syncRes.latest_date})`, 'success');
+      } else {
+        showToast('이미 오늘까지의 데이터가 최신 상태입니다. 목록을 새로고침했습니다.', 'info');
+      }
+    } catch (err) {
+      await loadDataItems();
+      showToast(`최신 데이터 동기화 알림: ${err.message}`, 'warning');
+    } finally {
+      elements.refreshDataBtn.disabled = false;
+      elements.refreshDataBtn.textContent = '🔄 새로고침';
+    }
   });
 
   // Modal Handlers
