@@ -549,16 +549,79 @@
   });
 
   // =========================================================
-  // Chart.js Visualization (3-1 Time Series Data)
+  // Chart.js Visualization (3-1 Time Series Data) & Signals
   // =========================================================
   async function loadChartData() {
     try {
-      // Fetch up to 150 recent trading days for smooth line chart
-      const res = await API.get('/api/data?limit=150&sort_by=date&sort_order=asc');
-      state.allChartData = res.items;
+      // Fetch recent trading days for smooth line chart & deep stats for signals
+      const [chartRes, statsRes] = await Promise.all([
+        API.get('/api/data?limit=150&sort_by=date&sort_order=asc'),
+        API.get('/api/data/statistics').catch(() => null)
+      ]);
+      state.allChartData = chartRes.items;
       renderChart(state.allChartData);
+      if (statsRes) {
+        renderTechnicalSignals(statsRes);
+      }
     } catch (err) {
       console.error('Failed to load chart data:', err);
+    }
+  }
+
+  function renderTechnicalSignals(stats) {
+    const badge = document.getElementById('signalBadge');
+    const rsiEl = document.getElementById('rsiIndicator');
+    const summaryText = document.getElementById('signalSummaryText');
+    const warningBox = document.getElementById('signalWarningBox');
+    if (!badge || !rsiEl || !summaryText || !warningBox) return;
+
+    const rsi = stats.rsi_14;
+    rsiEl.textContent = `RSI 14: ${rsi.toFixed(1)}`;
+
+    let badgeClass = 'signal-hold';
+    let badgeText = '중립 / 관망';
+    let summaryMsg = '';
+    let warningMsg = '';
+
+    if (rsi >= 70) {
+      badgeClass = 'signal-sell';
+      badgeText = '🔴 과열 / 분할 매도 고려';
+      summaryMsg = `14일 상대강도지수(RSI)가 ${rsi.toFixed(1)}로 단기 과열 임계치(70)를 초과했습니다. 단기 차익실현 매물 출회 가능성이 높습니다.`;
+      warningMsg = `⚠️ <strong>[단기 과매수 경고]</strong> 추격 매수를 자제하고 20일 이동평균선(SMA 20: ${formatPrice(stats.sma_20)}) 이탈 여부를 주시하며 분할 차익실현을 권장합니다.`;
+    } else if (rsi <= 30) {
+      badgeClass = 'signal-buy';
+      badgeText = '🟢 과매도 / 분할 매수 기회';
+      summaryMsg = `14일 상대강도지수(RSI)가 ${rsi.toFixed(1)}로 기술적 과매도 구간(30 이하)에 도달했습니다. 낙폭 과대에 따른 반등 압력이 형성 중입니다.`;
+      warningMsg = `💡 <strong>[기술적 반등 신호]</strong> 과거 최저 지지선(${formatPrice(stats.min_price)}) 방어 여부를 확인하며 분할 매수 관점 진입이 유효합니다.`;
+    } else {
+      const trend = (state.summary && state.summary.trend) ? state.summary.trend : '';
+      if (trend.includes('상승')) {
+        badgeClass = 'signal-buy';
+        badgeText = '🟢 추세 상승 / 보유 및 추종';
+        summaryMsg = `RSI 지수(${rsi.toFixed(1)})가 안정적이며 20일 이동평균선(${formatPrice(stats.sma_20)}) 대비 견조한 우상향 추세를 유지하고 있습니다.`;
+        warningMsg = `ℹ️ <strong>[안정 성장 구간]</strong> 20일 역사적 변동성(±${formatPrice(stats.volatility)})을 감안하여 트레일링 스탑을 설정하세요.`;
+      } else if (trend.includes('하락')) {
+        badgeClass = 'signal-sell';
+        badgeText = '🔴 단기 조정 / 비중 축소';
+        summaryMsg = `20일 이동평균선(${formatPrice(stats.sma_20)})을 하회하는 약세 흐름입니다. 60일 이동평균선(${formatPrice(stats.sma_60)}) 지지 확인이 선행되어야 합니다.`;
+        warningMsg = `⚠️ <strong>[추세 하락 주의]</strong> 섣부른 물타기를 지양하고 하락 브레이크가 걸릴 때까지 현금 비중 확대를 권장합니다.`;
+      } else {
+        badgeClass = 'signal-hold';
+        badgeText = '🟡 박스권 / 관망 및 탐색';
+        summaryMsg = `20일 및 60일 이동평균선 부근에서 횡보 중입니다. 명확한 거래량 수반 돌파가 나타날 때까지 관망을 권장합니다.`;
+        warningMsg = '';
+      }
+    }
+
+    badge.className = `signal-badge ${badgeClass}`;
+    badge.textContent = badgeText;
+    summaryText.textContent = summaryMsg;
+
+    if (warningMsg) {
+      warningBox.style.display = 'block';
+      warningBox.innerHTML = warningMsg;
+    } else {
+      warningBox.style.display = 'none';
     }
   }
 
@@ -875,7 +938,8 @@
     await Promise.all([
       loadSummary(),
       loadConversations(),
-      loadDataItems()
+      loadDataItems(),
+      loadChartData()
     ]);
   }
 
