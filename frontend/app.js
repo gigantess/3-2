@@ -320,6 +320,16 @@
       } else {
         elements.kpiTrendBadge.classList.add('trend-flat');
       }
+
+      // Chart View: Dynamic Insight Cards below time-series chart
+      const insightFactWhy = document.getElementById('insightFactWhy');
+      const insightAction = document.getElementById('insightAction');
+      if (insightFactWhy && summary.insights) {
+        insightFactWhy.innerHTML = `<strong>[실시간 분석]</strong> ${escapeHtml(summary.insights)}<br><span style="color:var(--text-muted);font-size:0.8rem;margin-top:6px;display:inline-block;">* 분석 기간: ${escapeHtml(summary.period)} (총 ${summary.count.toLocaleString()}개 거래일 기준)</span>`;
+      }
+      if (insightAction && summary.trend) {
+        insightAction.innerHTML = `<strong>[전략 제언]</strong> 현재 삼성전자는 <strong>${escapeHtml(summary.trend)}</strong> 상태입니다. 최근 20일 이동평균선(SMA 20)을 1차 지지선으로 설정하고, 단기 이격도가 ±5% 이상 벌어질 경우 분할 대응 전략을 권장합니다.`;
+      }
     } catch (err) {
       console.error('Failed to load summary:', err);
     }
