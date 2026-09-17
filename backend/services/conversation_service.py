@@ -9,7 +9,12 @@ from backend.schemas.conversation import (
     MessageItem
 )
 
+import logging
+
+logger = logging.getLogger("backend.conversation_service")
 COLLECTION_NAME = "conversations"
+MAX_MESSAGES_PER_CONVERSATION = 100
+MAX_MESSAGE_LENGTH = 4000
 
 class ConversationService:
     def __init__(self):
@@ -97,14 +102,19 @@ class ConversationService:
         doc_ref = self.collection.document(conv_id)
         doc = doc_ref.get()
 
+        # Enforce maximum message length
+        clean_content = content
+        if len(clean_content) > MAX_MESSAGE_LENGTH:
+            clean_content = clean_content[:MAX_MESSAGE_LENGTH] + "\n...(최대 글자 수 초과로 일부 생략됨)"
+
         new_msg = {
             "role": role,
-            "content": content,
+            "content": clean_content,
             "timestamp": now
         }
 
         if not doc.exists:
-            title = content[:30] + ("..." if len(content) > 30 else "")
+            title = clean_content[:30] + ("..." if len(clean_content) > 30 else "")
             data = {
                 "title": title,
                 "messages": [new_msg],
@@ -123,7 +133,13 @@ class ConversationService:
             d = doc.to_dict()
             messages = d.get("messages", [])
             messages.append(new_msg)
-            title = d.get("title") or (content[:30] + ("..." if len(content) > 30 else ""))
+
+            # Enforce maximum message count per conversation (sliding window preserving start message)
+            if len(messages) > MAX_MESSAGES_PER_CONVERSATION:
+                # Keep first message for topic preservation and retain latest N-1 messages
+                messages = [messages[0]] + messages[-(MAX_MESSAGES_PER_CONVERSATION - 1):]
+
+            title = d.get("title") or (clean_content[:30] + ("..." if len(clean_content) > 30 else ""))
             doc_ref.update({
                 "messages": messages,
                 "title": title,

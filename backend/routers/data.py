@@ -20,7 +20,10 @@ def create_data_item(item: DataItemCreate):
     """
     (date, value, memo) 형태의 새 시계열 데이터를 추가합니다.
     """
-    return data_service.add_item(item)
+    try:
+        return data_service.add_item(item)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"데이터 저장 실패: {str(e)}")
 
 @router.get("", summary="데이터 목록 조회")
 def get_data_items(
@@ -41,11 +44,18 @@ def get_data_items(
     }
 
 @router.get("/summary", response_model=DataSummaryResponse, summary="데이터 요약 정보 조회")
-def get_data_summary():
+def get_data_summary(
+    start_date: Optional[str] = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$", description="시작일 필터 (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$", description="종료일 필터 (YYYY-MM-DD)")
+):
     """
     AI 시스템 프롬프트 주입 및 대시보드 KPI용 데이터 요약(기간, 건수, 평균/최고/최저/최신, 추세)을 반환합니다.
+    선택적으로 start_date와 end_date를 지정하여 특정 기간에 대한 통계 요약을 산출할 수 있습니다.
     """
-    return data_service.get_summary()
+    try:
+        return data_service.get_summary(start_date=start_date, end_date=end_date)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"요약 통계 산출 실패: {str(e)}")
 
 @router.get("/statistics", summary="심층 통계 지표 조회 (보너스 과제)")
 def get_data_statistics():
@@ -96,17 +106,27 @@ def update_data_item(id: str, item: DataItemUpdate):
     """
     지정한 ID의 데이터(date, value, memo)를 수정합니다.
     """
-    updated = data_service.update_item(id, item)
-    if not updated:
-        raise HTTPException(status_code=404, detail="해당 ID의 데이터를 찾을 수 없습니다.")
-    return updated
+    try:
+        updated = data_service.update_item(id, item)
+        if not updated:
+            raise HTTPException(status_code=404, detail="해당 ID의 데이터를 찾을 수 없습니다.")
+        return updated
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"데이터 수정 실패: {str(e)}")
 
 @router.delete("/{id}", summary="데이터 삭제")
 def delete_data_item(id: str):
     """
     지정한 ID의 데이터를 삭제합니다.
     """
-    success = data_service.delete_item(id)
-    if not success:
-        raise HTTPException(status_code=404, detail="해당 ID의 데이터를 찾을 수 없습니다.")
-    return {"message": "데이터가 성공적으로 삭제되었습니다.", "id": id}
+    try:
+        success = data_service.delete_item(id)
+        if not success:
+            raise HTTPException(status_code=404, detail="해당 ID의 데이터를 찾을 수 없습니다.")
+        return {"message": "데이터가 성공적으로 삭제되었습니다.", "id": id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"데이터 삭제 실패: {str(e)}")

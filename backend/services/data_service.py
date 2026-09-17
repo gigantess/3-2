@@ -1,4 +1,6 @@
 import uuid
+import time
+import logging
 from datetime import datetime, timezone
 from typing import List, Optional, Tuple, Dict, Any
 from backend.database import get_db
@@ -10,28 +12,40 @@ from backend.schemas.data import (
     DataMetrics
 )
 
+logger = logging.getLogger("backend.data_service")
 COLLECTION_NAME = "data"
+CACHE_TTL_SECONDS = 60
 
 class DataService:
     def __init__(self):
         self.db = get_db()
         self.collection = self.db.collection(COLLECTION_NAME)
+        self._summary_cache: Dict[str, Tuple[DataSummaryResponse, float]] = {}
 
     def _now_iso(self) -> str:
         return datetime.now(timezone.utc).isoformat()
 
+    def _invalidate_cache(self):
+        """Invalidate in-memory summary cache upon data mutations."""
+        self._summary_cache.clear()
+
     def add_item(self, item_in: DataItemCreate) -> DataItemResponse:
-        now = self._now_iso()
-        doc_id = str(uuid.uuid4())
-        data = {
-            "date": item_in.date,
-            "value": float(item_in.value),
-            "memo": item_in.memo or "",
-            "created_at": now,
-            "updated_at": now
-        }
-        self.collection.document(doc_id).set(data)
-        return DataItemResponse(id=doc_id, **data)
+        try:
+            now = self._now_iso()
+            doc_id = str(uuid.uuid4())
+            data = {
+                "date": item_in.date,
+                "value": float(item_in.value),
+                "memo": item_in.memo or "",
+                "created_at": now,
+                "updated_at": now
+            }
+            self.collection.document(doc_id).set(data)
+            self._invalidate_cache()
+            return DataItemResponse(id=doc_id, **data)
+        except Exception as e:
+            logger.error(f"Failed to add data item: {e}")
+            raise RuntimeError(f"데이터 추가 중 오류가 발생했습니다: {str(e)}")
 
     def get_items(self, limit: int = 100, offset: int = 0, sort_by: str = "date", sort_order: str = "desc") -> Tuple[List[DataItemResponse], int]:
         all_docs = []
@@ -74,53 +88,87 @@ class DataService:
         )
 
     def update_item(self, doc_id: str, item_in: DataItemUpdate) -> Optional[DataItemResponse]:
-        doc_ref = self.collection.document(doc_id)
-        doc = doc_ref.get()
-        if not doc.exists:
-            return None
+        try:
+            doc_ref = self.collection.document(doc_id)
+            doc = doc_ref.get()
+            if not doc.exists:
+                return None
 
-        current_data = doc.to_dict()
-        now = self._now_iso()
-        update_dict: Dict[str, Any] = {"updated_at": now}
+            current_data = doc.to_dict()
+            now = self._now_iso()
+            update_dict: Dict[str, Any] = {"updated_at": now}
 
-        if item_in.date is not None:
-            update_dict["date"] = item_in.date
-        if item_in.value is not None:
-            update_dict["value"] = float(item_in.value)
-        if item_in.memo is not None:
-            update_dict["memo"] = item_in.memo
+            if item_in.date is not None:
+                update_dict["date"] = item_in.date
+            if item_in.value is not None:
+                update_dict["value"] = float(item_in.value)
+            if item_in.memo is not None:
+                update_dict["memo"] = item_in.memo
 
-        current_data.update(update_dict)
-        doc_ref.set(current_data, merge=True)
+            current_data.update(update_dict)
+            doc_ref.set(current_data, merge=True)
+            self._invalidate_cache()
 
-        return DataItemResponse(id=doc_id, **current_data)
+            return DataItemResponse(id=doc_id, **current_data)
+        except Exception as e:
+            logger.error(f"Failed to update data item {doc_id}: {e}")
+            raise RuntimeError(f"데이터 수정 중 오류가 발생했습니다: {str(e)}")
 
     def delete_item(self, doc_id: str) -> bool:
-        doc_ref = self.collection.document(doc_id)
-        doc = doc_ref.get()
-        if not doc.exists:
-            return False
-        doc_ref.delete()
-        return True
+        try:
+            doc_ref = self.collection.document(doc_id)
+            doc = doc_ref.get()
+            if not doc.exists:
+                return False
+            doc_ref.delete()
+            self._invalidate_cache()
+            return True
+        except Exception as e:
+            logger.error(f"Failed to delete data item {doc_id}: {e}")
+            raise RuntimeError(f"데이터 삭제 중 오류가 발생했습니다: {str(e)}")
 
-    def get_summary(self) -> DataSummaryResponse:
+    def get_summary(self, start_date: Optional[str] = None, end_date: Optional[str] = None) -> DataSummaryResponse:
         """
         Calculate statistical summary and trend based on 3-1 time-series algorithms.
+        Includes In-Memory TTL caching (60s) to reduce database overhead.
+        Supports optional period filtering (start_date, end_date: YYYY-MM-DD).
         """
+        cache_key = f"{start_date or ''}_{end_date or ''}"
+        now_ts = time.time()
+        if cache_key in self._summary_cache:
+            cached_res, timestamp = self._summary_cache[cache_key]
+            if now_ts - timestamp < CACHE_TTL_SECONDS:
+                return cached_res
+
         all_items: List[Dict[str, Any]] = []
         for doc in self.collection.stream():
             d = doc.to_dict()
             if "date" in d and "value" in d:
+                dt = d["date"]
+                if start_date and dt < start_date:
+                    continue
+                if end_date and dt > end_date:
+                    continue
                 all_items.append(d)
 
+        period_desc = "데이터 없음"
+        if start_date and end_date:
+            period_desc = f"{start_date} ~ {end_date} (데이터 없음)"
+        elif start_date:
+            period_desc = f"{start_date} 이후 (데이터 없음)"
+        elif end_date:
+            period_desc = f"{end_date} 이전 (데이터 없음)"
+
         if not all_items:
-            return DataSummaryResponse(
-                period="데이터 없음",
+            empty_summary = DataSummaryResponse(
+                period=period_desc,
                 count=0,
                 metrics=DataMetrics(total=0.0, average=0.0, max=0.0, min=0.0, latest=0.0),
-                trend="데이터가 등록되지 않았습니다.",
-                insights="분석할 데이터가 없습니다. 새 데이터를 추가해주세요."
+                trend="지정된 기간의 데이터가 등록되지 않았습니다.",
+                insights="해당 기간에 분석할 데이터가 없습니다. 기간 필터를 조정하거나 새 데이터를 추가해주세요."
             )
+            self._summary_cache[cache_key] = (empty_summary, now_ts)
+            return empty_summary
 
         # Sort chronologically (ascending) for time series analysis
         all_items.sort(key=lambda x: x["date"])
@@ -163,7 +211,7 @@ class DataService:
             f"최신 종가는 {latest_val:,.0f}원입니다."
         )
 
-        return DataSummaryResponse(
+        res = DataSummaryResponse(
             period=period,
             count=count,
             metrics=DataMetrics(
@@ -176,6 +224,8 @@ class DataService:
             trend=trend_str,
             insights=insights
         )
+        self._summary_cache[cache_key] = (res, now_ts)
+        return res
 
     def get_statistics(self) -> Dict[str, Any]:
         """

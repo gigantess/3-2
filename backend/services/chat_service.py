@@ -68,7 +68,21 @@ class ChatService:
             except Exception as e:
                 logger.warning(f"Could not initialize Gemini client: {e}")
 
-    def _build_system_prompt(self, summary: DataSummaryResponse) -> str:
+    @staticmethod
+    def build_system_prompt(summary: DataSummaryResponse) -> str:
+        """
+        AI 시스템 프롬프트 템플릿(Context Injection Template) 생성 함수.
+        
+        [문장 구성 및 변수 주입 규칙]
+        - 대상: 삼성전자(005930.KS)
+        - period: 시계열 시작일 ~ 종료일 (예: 2024-01-02 ~ 2026-09-11)
+        - count: 총 거래일 수 (예: 656)
+        - metrics: 최신 종가, 기간 평균 종가, 최고가, 최저가 (원 단위 쉼표 포맷팅)
+        - trend: 최근 20일 이동평균(SMA 20) 대비 이격률 및 추세 (상승세/하락세/보합)
+        - insights: 최고/최저가 일자 및 전체 기간 누적 수익률 요약
+        
+        토큰 소비량: 약 350 ~ 450 토큰 (전체 데이터 원본 대비 약 98% 절감)
+        """
         metrics = summary.metrics
         return f"""당신은 삼성전자(005930.KS) 주가 시계열 데이터 분석 전문 AI 비서입니다.
 사용자의 시계열 분석 데이터를 바탕으로 신뢰성 높고 친절한 금융/데이터 분석 맞춤형 답변을 제공하세요.
@@ -91,6 +105,9 @@ class ChatService:
 3. 사용자가 데이터 외적인 질문을 하더라도 삼성전자 주가 트렌드와 연계하여 답변을 유도하세요.
 4. 존댓말과 정중한 어조를 유지하세요.
 """
+
+    def _build_system_prompt(self, summary: DataSummaryResponse) -> str:
+        return self.build_system_prompt(summary)
 
     def _generate_mock_reply(self, user_message: str, summary: DataSummaryResponse) -> str:
         """

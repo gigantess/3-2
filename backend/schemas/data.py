@@ -4,8 +4,8 @@ import re
 
 class DataItemBase(BaseModel):
     date: str = Field(..., description="날짜 (YYYY-MM-DD)", examples=["2024-01-02"])
-    value: float = Field(..., description="수치값 (예: 주가, 종가)", examples=[76000.0])
-    memo: Optional[str] = Field("", description="메모 또는 추가 정보", examples=["시가 74,693원, 거래량 1,714만주"])
+    value: float = Field(..., gt=0, le=10000000.0, description="수치값 (종가, 0 초과 1,000만 이하)", examples=[76000.0])
+    memo: Optional[str] = Field("", max_length=500, description="메모 또는 추가 정보 (최대 500자)", examples=["시가 74,693원, 거래량 1,714만주"])
 
     @field_validator("date")
     @classmethod
@@ -14,13 +14,23 @@ class DataItemBase(BaseModel):
             raise ValueError("날짜 형식은 YYYY-MM-DD 이어야 합니다.")
         return v.strip()
 
+    @field_validator("memo")
+    @classmethod
+    def sanitize_memo(cls, v: Optional[str]) -> str:
+        if not v:
+            return ""
+        # Strip dangerous HTML script tags for XSS protection
+        sanitized = re.sub(r"<\s*script[^>]*>.*?<\s*/\s*script\s*>", "", v, flags=re.IGNORECASE | re.DOTALL)
+        sanitized = re.sub(r"[<>]", "", sanitized)
+        return sanitized.strip()
+
 class DataItemCreate(DataItemBase):
     pass
 
 class DataItemUpdate(BaseModel):
     date: Optional[str] = Field(None, description="날짜 (YYYY-MM-DD)")
-    value: Optional[float] = Field(None, description="수치값")
-    memo: Optional[str] = Field(None, description="메모 또는 추가 정보")
+    value: Optional[float] = Field(None, gt=0, le=10000000.0, description="수치값")
+    memo: Optional[str] = Field(None, max_length=500, description="메모 또는 추가 정보 (최대 500자)")
 
     @field_validator("date")
     @classmethod
@@ -29,6 +39,15 @@ class DataItemUpdate(BaseModel):
             if not re.match(r"^\d{4}-\d{2}-\d{2}$", v.strip()):
                 raise ValueError("날짜 형식은 YYYY-MM-DD 이어야 합니다.")
             return v.strip()
+        return v
+
+    @field_validator("memo")
+    @classmethod
+    def sanitize_memo(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            sanitized = re.sub(r"<\s*script[^>]*>.*?<\s*/\s*script\s*>", "", v, flags=re.IGNORECASE | re.DOTALL)
+            sanitized = re.sub(r"[<>]", "", sanitized)
+            return sanitized.strip()
         return v
 
 class DataItemResponse(DataItemBase):

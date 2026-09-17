@@ -20,51 +20,110 @@
     allChartData: []
   };
 
-  const API = {
-    async get(endpoint) {
-      const res = await fetch(`${CONFIG.API_BASE_URL}${endpoint}`);
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ detail: res.statusText }));
-        throw new Error(err.detail || '요청 처리에 실패했습니다.');
+  // Utility: HTML Sanitizer for XSS prevention
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  // Toast Notification System
+  function showToast(message, type = 'info', duration = 3500) {
+    const container = elements.toastContainer || document.getElementById('toastContainer');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    
+    let icon = 'ℹ️';
+    if (type === 'success') icon = '✅';
+    else if (type === 'error') icon = '⚠️';
+    else if (type === 'warning') icon = '⚡';
+
+    toast.innerHTML = `
+      <span class="toast-icon">${icon}</span>
+      <span class="toast-msg" style="flex:1;">${escapeHtml(message)}</span>
+      <button class="toast-close" aria-label="닫기">&times;</button>
+    `;
+
+    const closeBtn = toast.querySelector('.toast-close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => toast.remove());
+    }
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+      if (toast.parentElement) {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100%)';
+        toast.style.transition = 'all 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
       }
-      return res.json();
+    }, duration);
+  }
+
+  const API = {
+    async request(url, options = {}) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+        options.signal = controller.signal;
+
+        const res = await fetch(url, options);
+        clearTimeout(timeoutId);
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ detail: res.statusText }));
+          const errorMsg = err.detail || `서버 에러 (${res.status})`;
+          throw new Error(errorMsg);
+        }
+        return res.json();
+      } catch (err) {
+        if (!navigator.onLine) {
+          showToast('오프라인 상태입니다. 네트워크 연결을 확인해주세요.', 'error');
+          throw new Error('인터넷 연결이 오프라인 상태입니다.');
+        }
+        if (err.name === 'AbortError') {
+          showToast('서버 응답 시간이 초과되었습니다. Render 기동(콜드스타트) 중일 수 있습니다.', 'warning');
+          throw new Error('요청 시간 초과 (15초)');
+        }
+        const msg = err.message || '네트워크 연결에 실패했습니다.';
+        if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+          showToast('백엔드 API 서버 연결 실패: Render 콜드스타트 또는 서버 주소를 확인해주세요.', 'error');
+        }
+        throw err;
+      }
+    },
+
+    async get(endpoint) {
+      return this.request(`${CONFIG.API_BASE_URL}${endpoint}`);
     },
 
     async post(endpoint, data) {
-      const res = await fetch(`${CONFIG.API_BASE_URL}${endpoint}`, {
+      return this.request(`${CONFIG.API_BASE_URL}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ detail: res.statusText }));
-        throw new Error(err.detail || '요청 처리에 실패했습니다.');
-      }
-      return res.json();
     },
 
     async put(endpoint, data) {
-      const res = await fetch(`${CONFIG.API_BASE_URL}${endpoint}`, {
+      return this.request(`${CONFIG.API_BASE_URL}${endpoint}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ detail: res.statusText }));
-        throw new Error(err.detail || '요청 처리에 실패했습니다.');
-      }
-      return res.json();
     },
 
     async delete(endpoint) {
-      const res = await fetch(`${CONFIG.API_BASE_URL}${endpoint}`, {
+      return this.request(`${CONFIG.API_BASE_URL}${endpoint}`, {
         method: 'DELETE'
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ detail: res.statusText }));
-        throw new Error(err.detail || '요청 처리에 실패했습니다.');
-      }
-      return res.json();
     }
   };
 
@@ -863,6 +922,37 @@
       setTimeout(() => location.reload(), 600);
     });
   }
+
+  // Mobile Sidebar Toggle
+  const mobileSidebarToggle = document.getElementById('mobileSidebarToggle');
+  const appSidebar = document.getElementById('appSidebar');
+  if (mobileSidebarToggle && appSidebar) {
+    mobileSidebarToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      appSidebar.classList.toggle('open');
+    });
+
+    // Close sidebar when clicking outside on mobile
+    document.addEventListener('click', (e) => {
+      if (window.innerWidth <= 900 && appSidebar.classList.contains('open')) {
+        if (!appSidebar.contains(e.target) && !mobileSidebarToggle.contains(e.target)) {
+          appSidebar.classList.remove('open');
+        }
+      }
+    });
+  }
+
+  // Network Online / Offline Detection
+  window.addEventListener('online', () => {
+    showToast('네트워크 연결이 복구되었습니다. 최신 데이터를 동기화합니다.', 'success');
+    loadSummary();
+    loadDataItems();
+    loadConversations();
+  });
+
+  window.addEventListener('offline', () => {
+    showToast('네트워크 연결이 끊겼습니다. 현재 오프라인 모드입니다.', 'warning');
+  });
 
   // Start app on DOMContentLoaded
   if (document.readyState === 'loading') {
