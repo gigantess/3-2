@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from backend.config import ALLOWED_ORIGINS, PORT, HOST
-from backend.routers import data, conversations, chat
+from backend.routers import data, conversations, chat, discord
 from backend.services.data_service import DataService
 
 from contextlib import asynccontextmanager
@@ -49,6 +49,7 @@ app.add_middleware(
 app.include_router(data.router)
 app.include_router(conversations.router)
 app.include_router(chat.router)
+app.include_router(discord.router)
 
 @app.get("/health", tags=["Health"])
 def health_check():

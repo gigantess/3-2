@@ -82,6 +82,9 @@
             <span class="status-dot"></span>
             <span id="apiStatusText">API 연결됨</span>
           </div>
+          <button id="discordBriefingBtn" class="btn-secondary" title="현재 삼성전자 분석 리포트를 Discord 채널로 전송" style="display:inline-flex;align-items:center;gap:6px;">
+            📢 Discord 브리핑
+          </button>
           <a href="/docs" target="_blank" class="btn-secondary" id="swaggerDocsLink" title="Swagger API 명세서 열기">
             Swagger API Docs ↗
           </a>
@@ -152,6 +155,13 @@
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
               </button>
             </form>
+            <div class="chat-input-footer" style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding: 0 4px; font-size: 0.8rem; color: var(--text-muted);">
+              <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;">
+                <input type="checkbox" id="discordBroadcastCheckbox" checked style="cursor: pointer;">
+                <span>📢 Discord 웹후크로 질문/답변 동시 전송</span>
+              </label>
+              <span style="opacity: 0.7;">Shift+Enter 줄바꿈</span>
+            </div>
           </div>
         </div>
 

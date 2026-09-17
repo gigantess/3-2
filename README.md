@@ -254,7 +254,8 @@ Firestore는 대용량 시계열 주가 데이터와 사용자 대화 세션을 
 | **🌟 보너스 2-B** | 시계열 인터랙티브 차트 | Chart.js 기반 일별 종가 라인 및 20일 이동평균선 반응형 캔버스 렌더링 | **달성 (100%)** |
 | **🌟 보너스 2-C** | 데이터 내보내기 (Export) | `/api/data/export?format=csv|json` 파일 다운로드 기능 및 웹 버튼 제공 | **달성 (100%)** |
 | **🌟 보너스 2-D** | 다크 모드 토글 (Theme) | 헤더 테마 전환 버튼 및 `localStorage` 기반 상태 영구 유지 | **달성 (100%)** |
-| **🌟 품질 검증 (TDD)**| 테스트 스위트 (Pytest) | API CRUD, 비즈니스 로직, Gemini 연동, TTL 캐싱, 기간 필터, 422 검증 등 14개 테스트 전 항목 통과 (100%) | **달성 (100%)** |
+| **🚀 Discord 채널 연동** | Webhook AI 챗 & 일일 브리핑 | `backend/services/discord_service.py`, `backend/routers/discord.py` 질문/답변 실시간 전송 및 1클릭 리치 임베드 발송 | **달성 (100%)** |
+| **🌟 품질 검증 (TDD)**| 테스트 스위트 (Pytest) | API CRUD, 비즈니스 로직, Gemini 연동, TTL 캐싱, 기간 필터, 422 검증, Discord 연동 등 18개 테스트 전 항목 통과 (100%) | **달성 (100%)** |
 
 ---
 
@@ -448,13 +449,38 @@ Firestore는 대용량 시계열 주가 데이터와 사용자 대화 세션을 
 
 ---
 
-### 10. AI 도구 호출 (Function Calling) & MCP Server 연동 (보너스 과제 1)
+### 10. Discord 웹후크 채널 실시간 연동 (Discord AI Chat & Briefing)
+
+Discord 웹후크(Webhook)를 통해 웹 애플리케이션 화면에 머무르지 않고도 모바일 Discord 앱 및 PC 환경에서 삼성전자 AI 브리핑 및 질의응답을 실시간으로 구독하고 받아볼 수 있습니다:
+
+1. **AI 대화 실시간 브로드캐스트 (`POST /api/discord/chat`)**:
+   - 웹 화면의 채팅 입력창 하단 [📢 Discord 웹후크로 질문/답변 동시 전송] 체크박스를 켜고 질문하면, AI의 [Fact-Why-Action] 분석 답변이 생성됨과 동시에 Discord 채널로 Discord Embed 메시지가 자동 발송됩니다.
+   - 메시지에는 **사용자 질문**, **AI 맞춤 답변**, **당시 최신 종가 및 20일 추세 데이터 컨텍스트**가 보기 편한 리치 카드로 포함됩니다.
+2. **원클릭 일일 시장 분석 브리핑 (`POST /api/discord/briefing`)**:
+   - 상단 네비게이션의 [📢 Discord 브리핑] 버튼을 1클릭하면, 현재 삼성전자의 최신 종가, 분석 기간(총 거래일수), 20일 추세, **RSI 14(상대강도지수), 20일 가격 변동성(표준편차), SMA 20 이동평균선 및 기술적 매매 신호 배지(과매수/과매도/중립)**가 정갈한 Embed 카드로 즉시 채널에 게시됩니다.
+3. **연동 상태 확인 (`GET /api/discord/status`)**:
+   - 현재 웹후크 URL 설정 및 활성화 여부를 조회합니다.
+
+#### 💡 cURL 테스트 예제:
+```bash
+# 1. 주가 일일 브리핑 Discord 즉시 전송
+curl -X POST "http://localhost:8000/api/discord/briefing"
+
+# 2. 질문과 AI 답변을 Discord로 동시 전송
+curl -X POST "http://localhost:8000/api/discord/chat" \
+     -H "Content-Type: application/json" \
+     -d '{"message": "삼성전자 8만원대 지지 가능할까?"}'
+```
+
+---
+
+### 11. AI 도구 호출 (Function Calling) & MCP Server 연동 (보너스 과제 1)
 - **OpenAI / Gemini 도구 호출**: 복합 질의나 정밀 수치 조회가 필요할 때 AI 모델이 백엔드 내부 도구(`get_data_summary`, `get_data_statistics`, `get_recent_data_items`)를 자율 호출.
 - **Model Context Protocol (MCP) Server (`backend/mcp_server.py`)**: Claude Desktop 등 외부 에이전트가 JSON-RPC 2.0 stdio 프로토콜을 통해 삼성전자 주가 시계열 데이터를 외부 도구로 직접 활용 가능.
 
 ---
 
-### 11. 클라우드 운영 및 배포 시크릿 가이드
+### 12. 클라우드 운영 및 배포 시크릿 가이드
 
 #### 🔐 Render / Vercel 비밀값(Environment Variables) 등록 절차
 1. **Render 백엔드 대시보드 환경변수 등록**:
@@ -600,14 +626,14 @@ python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
 - 웹 브라우저에서 `http://127.0.0.1:8000` 접속
 - API 문서(Swagger UI) 확인: `http://127.0.0.1:8000/docs`
 
-### 5. 테스트 실행 (14개 단위/통합 테스트 전 항목 통과)
+### 5. 테스트 실행 (18개 단위/통합 테스트 전 항목 통과)
 
 ```powershell
-# 전체 테스트 실행
+# 전체 테스트 실행 (18개 테스트)
 pytest tests/ -v
 
-# 신규 추가된 요약 기간 필터, TTL 캐시, 422 검증 집중 테스트
-pytest tests/test_summary_period_and_cache.py -v
+# Discord 연동 테스트 집중 실행
+pytest tests/test_discord_integration.py -v
 ```
 
 - **검증 항목**:
@@ -624,6 +650,10 @@ pytest tests/test_summary_period_and_cache.py -v
   11. `test_input_validation_and_sanitization`: 음수/초과 주가 422 검증 및 XSS `<script>` 태그 자동 정제 검증
   12. `test_conversation_policies`: 4,000자 초과 메시지 절삭 및 대화 슬라이딩 윈도우 검증
   13. `test_system_prompt_builder`: AI 시스템 프롬프트 템플릿 문장 구성 및 변수 치환 검증
+  14. `test_discord_status`: Discord 웹후크 설정 상태 확인 엔드포인트 검증
+  15. `test_discord_service_unit`: Discord Embed 빌더 및 HTTP 요청 단위 검증
+  16. `test_discord_chat_endpoint`: `/api/discord/chat` 엔드포인트 호출 및 전송 플래그 검증
+  17. `test_discord_briefing_endpoint`: `/api/discord/briefing` 원클릭 일일 브리핑 엔드포인트 검증
 
 ---
 

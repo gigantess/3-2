@@ -499,7 +499,9 @@
     showTypingIndicator();
 
     try {
-      const response = await API.post('/api/chat', {
+      const sendToDiscord = document.getElementById('discordBroadcastCheckbox')?.checked ?? false;
+      const endpoint = sendToDiscord ? '/api/discord/chat' : '/api/chat';
+      const response = await API.post(endpoint, {
         message: message,
         conversation_id: state.currentConvId
       });
@@ -508,6 +510,10 @@
       state.currentConvId = response.conversation_id;
       appendChatMessage('assistant', response.reply);
       
+      if (response.sent_to_discord) {
+        showToast('Discord 채널로 질문/답변이 실시간 브로드캐스트되었습니다! 📢', 'info');
+      }
+
       // Refresh list to update title & timestamp
       loadConversations();
       loadSummary();
@@ -519,6 +525,25 @@
       state.isGenerating = false;
       elements.sendBtn.disabled = false;
     }
+  }
+
+  // Discord Briefing Button Event
+  const discordBriefingBtn = document.getElementById('discordBriefingBtn');
+  if (discordBriefingBtn) {
+    discordBriefingBtn.addEventListener('click', async () => {
+      try {
+        discordBriefingBtn.disabled = true;
+        const originalText = discordBriefingBtn.textContent;
+        discordBriefingBtn.textContent = '📢 전송 중...';
+        await API.post('/api/discord/briefing', {});
+        showToast('Discord 채널로 삼성전자 최신 분석 브리핑이 전송되었습니다! 🚀', 'success');
+      } catch (err) {
+        showToast(`Discord 브리핑 전송 실패: ${err.message}`, 'error');
+      } finally {
+        discordBriefingBtn.disabled = false;
+        discordBriefingBtn.textContent = '📢 Discord 브리핑';
+      }
+    });
   }
 
   elements.chatForm.addEventListener('submit', (e) => {
