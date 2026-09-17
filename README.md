@@ -10,9 +10,9 @@
 
 | 구분 | 플랫폼 | URL | 상태 |
 | :--- | :--- | :--- | :--- |
-| **웹 프론트엔드** | Vercel | `https://3-2-1-gigantess1.vercel.app/` | Live |
-| **백엔드 API 서버** | Render | `https://samsung-stock-ai-assistant.onrender.com` | Live |
-| **Swagger API 명세서** | Render | `https://samsung-stock-ai-assistant.onrender.com/docs` | Live |
+| **웹 프론트엔드** | Vercel | [https://3-2-1-gigantess1.vercel.app/](https://3-2-1-gigantess1.vercel.app/) | Live |
+| **백엔드 API 서버** | Render | [https://samsung-stock-ai-assistant.onrender.com](https://samsung-stock-ai-assistant.onrender.com) | Live |
+| **Swagger API 명세서** | Render | [https://samsung-stock-ai-assistant.onrender.com/docs](https://samsung-stock-ai-assistant.onrender.com/docs) | Live |
 
 > **⚡ Render 무료 티어 콜드스타트 안내:**
 > Render Free Tier 인스턴스는 15분간 비활성 시 슬립(Sleep) 모드로 전환됩니다. 첫 요청 시 인스턴스 기동에 약 30~50초의 지연이 발생할 수 있으며, 프론트엔드 상단에 안내 배너가 구현되어 있습니다.
