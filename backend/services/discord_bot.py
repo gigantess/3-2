@@ -1,7 +1,15 @@
+import sys
 import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Optional
+
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
 import discord
 from backend.config import DISCORD_BOT_TOKEN
@@ -11,11 +19,13 @@ from backend.services.data_service import DataService
 logger = logging.getLogger("backend.discord_bot")
 
 class SamsungStockDiscordBot(discord.Client):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, with_message_content: bool = True, *args, **kwargs):
         intents = discord.Intents.default()
-        intents.message_content = True  # Requires 'Message Content Intent' enabled in Discord Dev Portal
         intents.messages = True
+        if with_message_content:
+            intents.message_content = True
         super().__init__(intents=intents, *args, **kwargs)
+        self.with_message_content = with_message_content
         self.chat_service = ChatService()
         self.data_service = DataService()
 
@@ -214,9 +224,17 @@ async def run_discord_bot_background(token: Optional[str] = None):
         logger.info("[Discord Bot] DISCORD_BOT_TOKEN is not configured. Bot listener disabled.")
         return None
 
-    bot = get_discord_bot()
     try:
-        logger.info("[Discord Bot] Connecting to Discord Gateway with bot token...")
+        logger.info("[Discord Bot] Connecting to Discord Gateway with bot token (full intents)...")
+        bot = SamsungStockDiscordBot(with_message_content=True)
         await bot.start(bot_token)
+    except discord.errors.PrivilegedIntentsRequired:
+        logger.warning("[Discord Bot] 'Message Content Intent' is not enabled in Developer Portal. Falling back to basic intents (mentions only)...")
+        print("[Discord Bot ⚠️] 'Message Content Intent'가 꺼져 있어 멘션(@봇) 전용 모드로 안전하게 재연결합니다.")
+        try:
+            bot = SamsungStockDiscordBot(with_message_content=False)
+            await bot.start(bot_token)
+        except Exception as e2:
+            logger.error(f"[Discord Bot] Fallback bot failed: {e2}")
     except Exception as e:
         logger.error(f"[Discord Bot] Failed to run Discord bot: {e}")
