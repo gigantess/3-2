@@ -15,6 +15,7 @@ ALLOWED_ORIGINS = [origin.strip() for origin in ALLOWED_ORIGINS_RAW.split(",") i
 PORT = int(os.getenv("PORT", "8000"))
 HOST = os.getenv("HOST", "0.0.0.0")
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "")
+DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN", "")
 
 # Candidate credentials file paths
 CRED_PATHS = [

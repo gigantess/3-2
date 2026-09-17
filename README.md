@@ -255,8 +255,8 @@ Firestore는 대용량 시계열 주가 데이터와 사용자 대화 세션을 
 | **🌟 보너스 2-B** | 시계열 인터랙티브 차트 | Chart.js 기반 일별 종가 라인 및 20일 이동평균선 반응형 캔버스 렌더링 | **달성 (100%)** |
 | **🌟 보너스 2-C** | 데이터 내보내기 (Export) | `/api/data/export?format=csv|json` 파일 다운로드 기능 및 웹 버튼 제공 | **달성 (100%)** |
 | **🌟 보너스 2-D** | 다크 모드 토글 (Theme) | 헤더 테마 전환 버튼 및 `localStorage` 기반 상태 영구 유지 | **달성 (100%)** |
-| **🚀 Discord 채널 연동** | Webhook AI 챗 & 일일 브리핑 | `backend/services/discord_service.py`, `backend/routers/discord.py` 질문/답변 실시간 전송 및 1클릭 리치 임베드 발송 | **달성 (100%)** |
-| **🌟 품질 검증 (TDD)**| 테스트 스위트 (Pytest) | API CRUD, 비즈니스 로직, Gemini 연동, TTL 캐싱, 기간 필터, 422 검증, Discord 연동, 자동 동기화 등 19개 테스트 전 항목 통과 (100%) | **달성 (100%)** |
+| **🚀 Discord 채널 연동** | Webhook AI 챗 & 양방향 봇 | Webhook(브로드캐스트/브리핑) + `discord.py` 기반 양방향 AI 비서 봇(`!질문`, `!브리핑`, 멘션) | **달성 (100%)** |
+| **🌟 품질 검증 (TDD)**| 테스트 스위트 (Pytest) | API CRUD, 비즈니스 로직, Gemini 연동, TTL 캐싱, 기간 필터, 422 검증, Discord 연동, 자동 동기화 등 20개 테스트 전 항목 통과 (100%) | **달성 (100%)** |
 
 ---
 
@@ -450,28 +450,34 @@ Firestore는 대용량 시계열 주가 데이터와 사용자 대화 세션을 
 
 ---
 
-### 10. Discord 웹후크 채널 실시간 연동 (Discord AI Chat & Briefing)
+### 10. Discord 채널 연동 (웹후크 브로드캐스트 & 실시간 양방향 AI 봇)
 
-Discord 웹후크(Webhook)를 통해 웹 애플리케이션 화면에 머무르지 않고도 모바일 Discord 앱 및 PC 환경에서 삼성전자 AI 브리핑 및 질의응답을 실시간으로 구독하고 받아볼 수 있습니다:
+Discord 연동은 **웹후크(단방향 발행)**와 **Discord Bot(실시간 양방향 질의응답)** 2가지 아키텍처로 완전하게 구축되어 있습니다:
 
-1. **AI 대화 실시간 브로드캐스트 (`POST /api/discord/chat`)**:
-   - 웹 화면의 채팅 입력창 하단 [📢 Discord 웹후크로 질문/답변 동시 전송] 체크박스를 켜고 질문하면, AI의 [Fact-Why-Action] 분석 답변이 생성됨과 동시에 Discord 채널로 Discord Embed 메시지가 자동 발송됩니다.
-   - 메시지에는 **사용자 질문**, **AI 맞춤 답변**, **당시 최신 종가 및 20일 추세 데이터 컨텍스트**가 보기 편한 리치 카드로 포함됩니다.
-2. **원클릭 일일 시장 분석 브리핑 (`POST /api/discord/briefing`)**:
-   - 상단 네비게이션의 [📢 Discord 브리핑] 버튼을 1클릭하면, 현재 삼성전자의 최신 종가, 분석 기간(총 거래일수), 20일 추세, **RSI 14(상대강도지수), 20일 가격 변동성(표준편차), SMA 20 이동평균선 및 기술적 매매 신호 배지(과매수/과매도/중립)**가 정갈한 Embed 카드로 즉시 채널에 게시됩니다.
-3. **연동 상태 확인 (`GET /api/discord/status`)**:
-   - 현재 웹후크 URL 설정 및 활성화 여부를 조회합니다.
+#### A. 웹후크 단방향 발행 (Webhook Broadcast)
+웹 화면에서 실행된 작업과 일일 요약을 디스코드 채널로 실시간 푸시합니다:
+1. **AI 대화 동시 전송 (`POST /api/discord/chat`)**: 웹 입력창 하단 [📢 Discord 동시 전송] 체크박스를 켜고 질문하면 웹 화면과 Discord 채널로 AI 분석 답변 카드가 실시간 발행됩니다.
+2. **원클릭 시장 브리핑 (`POST /api/discord/briefing`)**: 상단 [📢 Discord 브리핑] 버튼을 누르면 최신 종가, 20일 추세, RSI 14, 20일 변동성, SMA 20, 매매 신호 배지 카드가 즉시 전송됩니다.
 
-#### 💡 cURL 테스트 예제:
-```bash
-# 1. 주가 일일 브리핑 Discord 즉시 전송
-curl -X POST "http://localhost:8000/api/discord/briefing"
+#### B. 디스코드 내 양방향 AI 채팅 봇 (Bidirectional Discord Bot)
+> **💡 기술 배경**: Discord 웹후크는 보안 정책상 단방향(Write-Only)으로만 작동하며 채널의 채팅 이벤트를 수신할 수 없습니다. 따라서 **디스코드 채널 안에서 사용자가 질문하고 즉시 AI 답변을 받아보려면 양방향 봇(`discord.py`)**이 동작해야 합니다.
 
-# 2. 질문과 AI 답변을 Discord로 동시 전송
-curl -X POST "http://localhost:8000/api/discord/chat" \
-     -H "Content-Type: application/json" \
-     -d '{"message": "삼성전자 8만원대 지지 가능할까?"}'
-```
+- **지원 명령어**:
+  - `!질문 <질문내용>` 또는 `!삼성 <질문내용>`: 삼성전자 시계열 데이터를 기반으로 한 AI 맞춤 Fact-Why-Action 분석 답변을 임베드 카드로 답장
+  - `@삼성전자 AI 비서 <질문내용>`: 봇 멘션으로 대화 가능
+  - `!브리핑`: 현재 주가 요약 및 기술적 보조지표/매매 신호 카드를 채널에 즉시 답장
+- **실행 방법**:
+  ```powershell
+  # 1. 단독 봇 데몬 실행
+  python backend/scripts/run_discord_bot.py --token YOUR_DISCORD_BOT_TOKEN
+  
+  # 2. 또는 .env 파일에 DISCORD_BOT_TOKEN 등록 시 백엔드 서버(uvicorn) 기동과 함께 자동 백그라운드 상주 실행
+  ```
+- **Discord Bot Token 2분 발급 가이드**:
+  1. [Discord Developer Portal](https://discord.com/developers/applications) 접속 후 **[New Application]** 생성
+  2. 좌측 **[Bot]** 탭 클릭 → **[Reset Token]**을 눌러 토큰 복사
+  3. 동일 페이지 하단 **[Privileged Gateway Intents]**에서 **`MESSAGE CONTENT INTENT`** 반드시 활성화(ON)
+  4. 좌측 **[OAuth2]** → **[URL Generator]** → 스코프 `bot` 체크 → 권한 `Send Messages`, `Embed Links`, `Read Message History` 체크 후 생성된 URL로 봇을 내 디스코드 서버에 초대
 
 ---
 
@@ -627,13 +633,13 @@ python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
 - 웹 브라우저에서 `http://127.0.0.1:8000` 접속
 - API 문서(Swagger UI) 확인: `http://127.0.0.1:8000/docs`
 
-### 5. 테스트 실행 (18개 단위/통합 테스트 전 항목 통과)
+### 5. 테스트 실행 (20개 단위/통합 테스트 전 항목 통과)
 
 ```powershell
-# 전체 테스트 실행 (18개 테스트)
+# 전체 테스트 실행 (20개 테스트)
 pytest tests/ -v
 
-# Discord 연동 테스트 집중 실행
+# Discord 연동 및 봇 초기화 테스트 집중 실행
 pytest tests/test_discord_integration.py -v
 ```
 
@@ -641,20 +647,22 @@ pytest tests/test_discord_integration.py -v
   1. `test_health_check`: 서비스 헬스체크 및 DB 연결 검증
   2. `test_data_crud_and_summary`: 주가 등록, 조회, 수정, 삭제, 내보내기(CSV/JSON) 검증
   3. `test_data_validation_error`: 잘못된 날짜 형식 전송 시 422 Unprocessable Entity 검증
-  4. `test_chat_api_context_injection`: 실시간 컨텍스트 주입 챗봇 응답 검증
-  5. `test_conversations_crud`: 대화 세션 생성, 목록, 복원, 삭제 검증
-  6. `test_statistics_endpoint_bonus`: 20일 변동성, 20/60일 SMA, 14일 RSI 지표 산출 검증
-  7. `test_mcp_tools_definition_bonus`: Model Context Protocol 3종 도구 스키마 검증
-  8. `test_gemini_chat_service`: Gemini API 정상 호출 및 클라이언트 부재 시 Fallback Mock 검증
-  9. `test_summary_period_filtering`: 시작일/종료일 기간 필터 요약 계산 검증
-  10. `test_summary_caching_and_invalidation`: 60초 TTL 인메모리 캐시 및 데이터 변경 시 캐시 무효화 검증
-  11. `test_input_validation_and_sanitization`: 음수/초과 주가 422 검증 및 XSS `<script>` 태그 자동 정제 검증
-  12. `test_conversation_policies`: 4,000자 초과 메시지 절삭 및 대화 슬라이딩 윈도우 검증
-  13. `test_system_prompt_builder`: AI 시스템 프롬프트 템플릿 문장 구성 및 변수 치환 검증
-  14. `test_discord_status`: Discord 웹후크 설정 상태 확인 엔드포인트 검증
-  15. `test_discord_service_unit`: Discord Embed 빌더 및 HTTP 요청 단위 검증
-  16. `test_discord_chat_endpoint`: `/api/discord/chat` 엔드포인트 호출 및 전송 플래그 검증
-  17. `test_discord_briefing_endpoint`: `/api/discord/briefing` 원클릭 일일 브리핑 엔드포인트 검증
+  4. `test_data_sync_endpoint`: 외부 금융 소스 실시간 주가 동기화 및 최신일 갱신 검증
+  5. `test_chat_api_context_injection`: 실시간 컨텍스트 주입 챗봇 응답 검증
+  6. `test_conversations_crud`: 대화 세션 생성, 목록, 복원, 삭제 검증
+  7. `test_statistics_endpoint_bonus`: 20일 변동성, 20/60일 SMA, 14일 RSI 지표 산출 검증
+  8. `test_mcp_tools_definition_bonus`: Model Context Protocol 3종 도구 스키마 검증
+  9. `test_gemini_chat_service`: Gemini API 정상 호출 및 클라이언트 부재 시 Fallback Mock 검증
+  10. `test_summary_period_filtering`: 시작일/종료일 기간 필터 요약 계산 검증
+  11. `test_summary_caching_and_invalidation`: 60초 TTL 인메모리 캐시 및 데이터 변경 시 캐시 무효화 검증
+  12. `test_input_validation_and_sanitization`: 음수/초과 주가 422 검증 및 XSS `<script>` 태그 자동 정제 검증
+  13. `test_conversation_policies`: 4,000자 초과 메시지 절삭 및 대화 슬라이딩 윈도우 검증
+  14. `test_system_prompt_builder`: AI 시스템 프롬프트 템플릿 문장 구성 및 변수 치환 검증
+  15. `test_discord_status`: Discord 웹후크 및 봇 설정 상태 확인 엔드포인트 검증
+  16. `test_discord_service_unit`: Discord Embed 빌더 및 HTTP 요청 단위 검증
+  17. `test_discord_chat_endpoint`: `/api/discord/chat` 엔드포인트 호출 및 전송 플래그 검증
+  18. `test_discord_briefing_endpoint`: `/api/discord/briefing` 원클릭 일일 브리핑 엔드포인트 검증
+  19. `test_discord_bot_initialization`: 양방향 `SamsungStockDiscordBot` 인스턴스 및 서비스 연결 검증
 
 ---
 

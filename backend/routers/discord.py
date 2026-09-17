@@ -17,15 +17,18 @@ discord_service = DiscordService()
 class DiscordChatResponse(ChatResponse):
     sent_to_discord: bool = Field(True, description="Discord 채널 전송 성공 여부")
 
-@router.get("/status", summary="Discord 웹후크 연동 상태 조회")
+@router.get("/status", summary="Discord 웹후크 및 양방향 봇 연동 상태 조회")
 def get_discord_status():
     """
-    Discord 웹후크 URL 설정 여부 및 상태를 확인합니다.
+    Discord 웹후크 URL 및 양방향 봇 토큰 설정 여부와 상태를 확인합니다.
     """
+    from backend.config import DISCORD_BOT_TOKEN
     return {
         "configured": discord_service.is_configured(),
-        "channel_type": "Discord Webhook",
-        "description": "실시간 AI 채팅 답변 및 시장 브리핑 전송 활성화"
+        "webhook_enabled": discord_service.is_configured(),
+        "bot_token_configured": bool(DISCORD_BOT_TOKEN),
+        "channel_type": "Discord Webhook & Bidirectional Bot",
+        "description": "실시간 AI 채팅 답변 및 양방향 디스코드 봇 대화 활성화"
     }
 
 @router.post("/chat", response_model=DiscordChatResponse, summary="AI 채팅 질의 및 Discord 동시 전송")

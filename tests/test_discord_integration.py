@@ -43,3 +43,10 @@ def test_discord_briefing_endpoint():
     data = res.json()
     assert data["status"] == "success"
     assert "발송되었습니다" in data["message"]
+
+def test_discord_bot_initialization():
+    from backend.services.discord_bot import get_discord_bot
+    bot = get_discord_bot()
+    assert bot is not None
+    assert bot.chat_service is not None
+    assert bot.data_service is not None

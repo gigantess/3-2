@@ -1,11 +1,12 @@
 import os
+import asyncio
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-from backend.config import ALLOWED_ORIGINS, PORT, HOST
+from backend.config import ALLOWED_ORIGINS, PORT, HOST, DISCORD_BOT_TOKEN
 from backend.routers import data, conversations, chat, discord
 from backend.services.data_service import DataService
 
@@ -25,7 +26,21 @@ async def lifespan(app: FastAPI):
                 seed_database(limit=656)
     except Exception as e:
         print(f"[Startup Warning] Could not check/seed database: {e}")
+
+    # Startup: Run bidirectional Discord Bot if bot token is configured
+    bot_task = None
+    if DISCORD_BOT_TOKEN:
+        try:
+            from backend.services.discord_bot import run_discord_bot_background
+            bot_task = asyncio.create_task(run_discord_bot_background())
+            print("[Startup] Bidirectional Discord Bot task initiated.")
+        except Exception as e:
+            print(f"[Startup Warning] Could not launch Discord Bot: {e}")
+
     yield
+
+    if bot_task:
+        bot_task.cancel()
 
 app = FastAPI(
     title="삼성전자 주가 분석 AI 비서 API",
